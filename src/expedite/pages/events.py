@@ -61,9 +61,16 @@ def register_events_page() -> None:
                                 ui.label(
                                     f"{event.start_date} · {event.folder_name()}"
                                 ).classes("text-sm text-gray-500")
-                            ui.button(
-                                "Open",
-                                on_click=lambda e=event: ui.navigate.to(
-                                    f"/events/{e.folder_name()}"
-                                ),
-                            )
+                            with ui.row().classes("gap-2"):
+                                ui.button(
+                                    "Open",
+                                    on_click=lambda e=event: ui.navigate.to(
+                                        f"/events/{e.folder_name()}"
+                                    ),
+                                )
+                                ui.button(
+                                    "Orders",
+                                    on_click=lambda e=event: ui.navigate.to(
+                                        f"/events/{e.folder_name()}/orders"
+                                    ),
+                                ).props("flat")

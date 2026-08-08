@@ -1,0 +1,28 @@
+[project]
+name = "event-intake"
+version = "0.1.0"
+description = "Desktop event order intake app with CSV export and 4x6 label image generation"
+readme = "README.md"
+authors = [
+    { name = "John Myrda", email = "hello@johnmyrda.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "nicegui[native]>=3.15.0",
+    "pillow>=12.3.0",
+    "pydantic>=2.13.4",
+    "pydantic-extra-types[phonenumbers]>=2.10.0",
+]
+
+[project.scripts]
+expedite = "event_intake.main:main"
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.2",
+    "ty>=0.0.69",
+]

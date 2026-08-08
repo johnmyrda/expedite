@@ -3,7 +3,7 @@
 import csv
 from pathlib import Path
 
-from event_intake.models import Event, Order
+from expedite.models import Event, Order
 
 
 def order_csv_fieldnames() -> list[str]:

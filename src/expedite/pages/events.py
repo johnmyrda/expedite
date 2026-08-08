@@ -4,8 +4,9 @@ from datetime import datetime
 
 from nicegui import ui
 
-from event_intake.config import APP_NAME, data_dir
-from event_intake.storage.events import create_event, list_events
+from expedite.config import APP_NAME, data_dir
+from expedite.local_files import open_local_path
+from expedite.storage.events import create_event, list_events
 
 
 def register_events_page() -> None:
@@ -15,8 +16,15 @@ def register_events_page() -> None:
         ui.add_head_html("<style>body { background: #f7f7f7; }</style>")
 
         with ui.column().classes("w-full max-w-3xl mx-auto p-6 gap-6"):
-            ui.label(APP_NAME).classes("text-3xl font-bold")
-            ui.label(f"Data folder: {data_dir()}").classes("text-sm text-gray-500")
+            app_data_dir = data_dir()
+            with ui.row().classes("items-center gap-2"):
+                ui.label(APP_NAME).classes("text-3xl font-bold")
+                ui.button(
+                    icon="folder_open",
+                    on_click=lambda: open_local_path(app_data_dir),
+                ).props("flat round dense").classes("text-primary").tooltip(
+                    str(app_data_dir)
+                )
 
             with ui.card().classes("w-full"):
                 ui.label("Create New Event").classes("text-xl font-semibold")

@@ -1,4 +1,4 @@
-# Event Order Intake
+# Expedite
 
 Desktop app for event order intake, CSV export, and 4x6 label image generation.
 
@@ -8,13 +8,13 @@ This project uses [`uv`](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run event-intake
+uv run expedite
 ```
 
-Event data defaults to `data/`. Override with:
+Event data defaults to the user's Documents folder when available. Override with:
 
 ```bash
-EVENT_INTAKE_DATA_DIR=/path/to/events uv run event-intake
+EVENT_INTAKE_DATA_DIR=/path/to/events uv run expedite
 ```
 
 ## v1 Scope

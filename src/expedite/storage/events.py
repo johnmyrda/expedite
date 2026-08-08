@@ -7,8 +7,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from event_intake.config import data_dir
-from event_intake.models import Event
+from expedite.config import data_dir
+from expedite.models import Event
 
 METADATA_FILE = "event.json"
 

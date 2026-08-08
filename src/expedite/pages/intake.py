@@ -2,10 +2,11 @@
 
 from nicegui import ui
 
-from event_intake.label import render_label
-from event_intake.models import Order
-from event_intake.storage.csv_store import append_order, next_order_id
-from event_intake.storage.events import get_event
+from expedite.label import render_label
+from expedite.local_files import open_local_path
+from expedite.models import Order
+from expedite.storage.csv_store import append_order, next_order_id
+from expedite.storage.events import get_event
 
 
 def register_intake_page() -> None:
@@ -22,10 +23,13 @@ def register_intake_page() -> None:
 
         with ui.column().classes("w-full max-w-3xl mx-auto p-6 gap-6"):
             with ui.row().classes("w-full items-center justify-between"):
-                with ui.column().classes("gap-0"):
+                with ui.row().classes("items-center gap-2"):
                     ui.label(event.name).classes("text-3xl font-bold")
-                    ui.label(f"Event folder: {event.path}").classes(
-                        "text-sm text-gray-500"
+                    ui.button(
+                        icon="folder_open",
+                        on_click=lambda: open_local_path(event.path),
+                    ).props("flat round dense").classes("text-primary").tooltip(
+                        str(event.path)
                     )
                 ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
 
@@ -46,7 +50,7 @@ def register_intake_page() -> None:
                     ui.textarea("Work Request").props("outlined").classes("w-full")
                 )
                 cost_input = ui.input("Cost").props("outlined").classes("w-full")
-                status_label = ui.label("").classes("text-positive")
+                status_area = ui.column().classes("gap-1")
 
                 def show_warnings(warnings: list[str]) -> None:
                     warning_list.clear()
@@ -79,9 +83,17 @@ def register_intake_page() -> None:
                     saved_order = order.with_label_filename(label_path.name)
                     append_order(saved_order)
 
-                    status_label.text = (
-                        f"Saved order #{saved_order.order_id}; label: {label_path}"
-                    )
+                    status_area.clear()
+                    with status_area, ui.row().classes("items-center gap-2"):
+                        ui.label(f"Saved order #{saved_order.order_id}").classes(
+                            "text-positive"
+                        )
+                        ui.button(
+                            icon="article",
+                            on_click=lambda path=label_path: open_local_path(path),
+                        ).props("flat round dense").classes("text-primary").tooltip(
+                            str(label_path)
+                        )
                     ui.notify(f"Saved order #{saved_order.order_id}", type="positive")
                     clear_form()
                     order_title.text = f"Order #{next_order_id(event)}"

@@ -299,7 +299,7 @@ wheels = [
 ]
 
 [[package]]
-name = "event-intake"
+name = "expedite"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

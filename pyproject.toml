@@ -1,7 +1,7 @@
 [project]
-name = "event-intake"
+name = "expedite"
 version = "0.1.0"
-description = "Desktop event order intake app with CSV export and 4x6 label image generation"
+description = "Desktop app for event order intake, CSV export, and 4x6 label image generation"
 readme = "README.md"
 authors = [
     { name = "John Myrda", email = "hello@johnmyrda.com" }
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-expedite = "event_intake.main:main"
+expedite = "expedite.main:main"
 
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]

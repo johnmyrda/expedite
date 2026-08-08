@@ -6,8 +6,8 @@ from typing import TypeAlias
 
 from PIL import Image, ImageDraw, ImageFont
 
-from event_intake.config import LABEL_SIZE_PX
-from event_intake.models import Order
+from expedite.config import LABEL_SIZE_PX
+from expedite.models import Order
 
 LabelFont: TypeAlias = ImageFont.ImageFont | ImageFont.FreeTypeFont
 

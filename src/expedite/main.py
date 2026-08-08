@@ -2,10 +2,10 @@
 
 from nicegui import ui
 
-from event_intake.config import APP_NAME
-from event_intake.pages.events import register_events_page
-from event_intake.pages.intake import register_intake_page
-from event_intake.storage.events import ensure_data_dir
+from expedite.config import APP_NAME
+from expedite.pages.events import register_events_page
+from expedite.pages.intake import register_intake_page
+from expedite.storage.events import ensure_data_dir
 
 
 def main() -> None:

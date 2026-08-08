@@ -14,6 +14,12 @@ from expedite.storage.csv_store import (
     update_order,
 )
 from expedite.storage.events import get_event
+from expedite.validation import (
+    validate_cost,
+    validate_name,
+    validate_phone,
+    validate_work_request,
+)
 
 
 def register_intake_page() -> None:
@@ -78,19 +84,42 @@ def register_intake_page() -> None:
                 order_title = ui.label(f"{title_prefix} #{current_order_id}").classes(
                     "text-xl font-semibold"
                 )
-                name_input = ui.input(
-                    "Name", value=existing_order.name if existing_order else ""
-                ).props("outlined").classes("w-full")
-                phone_input = ui.input(
-                    "Phone", value=existing_order.phone if existing_order else ""
-                ).props("outlined").classes("w-full")
-                work_request_input = ui.textarea(
-                    "Work Request",
-                    value=existing_order.work_request if existing_order else "",
-                ).props("outlined").classes("w-full")
-                cost_input = ui.input(
-                    "Cost", value=str(existing_order.cost) if existing_order else ""
-                ).props("outlined").classes("w-full")
+                name_input = (
+                    ui.input(
+                        "Name",
+                        value=existing_order.name if existing_order else "",
+                        validation=validate_name,
+                    )
+                    .props("outlined debounce=2000")
+                    .classes("w-full")
+                )
+                phone_input = (
+                    ui.input(
+                        "Phone",
+                        value=existing_order.phone if existing_order else "",
+                        validation=validate_phone,
+                    )
+                    .props("outlined debounce=2000")
+                    .classes("w-full")
+                )
+                work_request_input = (
+                    ui.textarea(
+                        "Work Request",
+                        value=existing_order.work_request if existing_order else "",
+                        validation=validate_work_request,
+                    )
+                    .props("outlined debounce=2000")
+                    .classes("w-full")
+                )
+                cost_input = (
+                    ui.input(
+                        "Cost",
+                        value=str(existing_order.cost) if existing_order else "",
+                        validation=validate_cost,
+                    )
+                    .props("outlined debounce=2000")
+                    .classes("w-full")
+                )
                 status_area = ui.column().classes("gap-1")
 
                 def show_warnings(warnings: list[str]) -> None:

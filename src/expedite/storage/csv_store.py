@@ -78,7 +78,10 @@ def update_order(order: Order) -> None:
         except ValueError:
             continue
         if row_order_id == order.order_id:
-            rows[index] = {key: str(value) if value is not None else "" for key, value in replacement.items()}
+            rows[index] = {
+                key: str(value) if value is not None else ""
+                for key, value in replacement.items()
+            }
             updated = True
             break
 

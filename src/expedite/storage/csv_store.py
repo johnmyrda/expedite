@@ -4,7 +4,7 @@ import csv
 from datetime import datetime
 from pathlib import Path
 
-from expedite.models import Event, Order
+from expedite.models import Event, Order, normalize_phone_for_csv
 
 
 def order_csv_fieldnames() -> list[str]:
@@ -54,6 +54,26 @@ def get_order(event: Event, order_id: int) -> Order | None:
     return None
 
 
+def order_csv_row(order: Order) -> dict[str, object]:
+    """Return an order CSV row without invoking Pydantic serialization.
+
+    Intake submissions intentionally use ``model_construct`` so warning-level
+    invalid values can still be saved. Building the row explicitly avoids
+    Pydantic serializer warnings when those unvalidated values do not match the
+    model's annotated field type.
+    """
+
+    return {
+        "order_id": order.order_id,
+        "timestamp": order.timestamp.isoformat(),
+        "name": order.name,
+        "phone": normalize_phone_for_csv(order.phone),
+        "work_request": order.work_request,
+        "cost": order.cost,
+        "label_filename": order.label_filename or "",
+    }
+
+
 def append_order(order: Order) -> None:
     path = orders_csv_path(order.event)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -63,13 +83,13 @@ def append_order(order: Order) -> None:
         writer = csv.DictWriter(handle, fieldnames=order_csv_fieldnames())
         if is_new:
             writer.writeheader()
-        writer.writerow(order.model_dump(mode="json", exclude={"event"}))
+        writer.writerow(order_csv_row(order))
 
 
 def update_order(order: Order) -> None:
     path = orders_csv_path(order.event)
     rows = read_order_rows(order.event)
-    replacement = order.model_dump(mode="json", exclude={"event"})
+    replacement = order_csv_row(order)
     updated = False
 
     for index, row in enumerate(rows):
@@ -79,8 +99,7 @@ def update_order(order: Order) -> None:
             continue
         if row_order_id == order.order_id:
             rows[index] = {
-                key: str(value) if value is not None else ""
-                for key, value in replacement.items()
+                key: str(value) if value is not None else "" for key, value in replacement.items()
             }
             updated = True
             break

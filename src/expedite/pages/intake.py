@@ -55,19 +55,13 @@ def register_intake_page() -> None:
                     ui.button(
                         icon="folder_open",
                         on_click=lambda: open_local_path(event.path),
-                    ).props("flat round dense").classes("text-primary").tooltip(
-                        str(event.path)
-                    )
+                    ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
                 with ui.row().classes("gap-2"):
                     ui.button(
                         "Orders",
-                        on_click=lambda: ui.navigate.to(
-                            f"/events/{event.folder_name()}/orders"
-                        ),
+                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/orders"),
                     ).props("flat")
-                    ui.button("Events", on_click=lambda: ui.navigate.to("/")).props(
-                        "flat"
-                    )
+                    ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
 
             warning_box = ui.card().classes("w-full bg-amber-50 hidden")
             with warning_box:
@@ -133,10 +127,10 @@ def register_intake_page() -> None:
                         warning_box.classes(add="hidden")
 
                 def clear_form() -> None:
-                    name_input.value = ""
-                    phone_input.value = ""
-                    work_request_input.value = ""
-                    cost_input.value = ""
+                    fields = (name_input, phone_input, work_request_input, cost_input)
+                    for field in fields:
+                        field.value = ""
+                        field.error = None
 
                 def handle_submit() -> None:
                     order = Order.model_construct(
@@ -163,15 +157,11 @@ def register_intake_page() -> None:
                     status_area.clear()
                     with status_area, ui.row().classes("items-center gap-2"):
                         verb = "Updated" if existing_order else "Saved"
-                        ui.label(f"{verb} order #{saved_order.order_id}").classes(
-                            "text-positive"
-                        )
+                        ui.label(f"{verb} order #{saved_order.order_id}").classes("text-positive")
                         ui.button(
                             icon="article",
                             on_click=lambda path=label_path: open_local_path(path),
-                        ).props("flat round dense").classes("text-primary").tooltip(
-                            str(label_path)
-                        )
+                        ).props("flat round dense").classes("text-primary").tooltip(str(label_path))
                     notify_verb = "Updated" if existing_order else "Saved"
                     ui.notify(
                         f"{notify_verb} order #{saved_order.order_id}",
@@ -182,9 +172,7 @@ def register_intake_page() -> None:
                         order_title.text = f"Order #{next_order_id(event)}"
 
                 submit_text = "Save Changes" if existing_order else "Submit Order"
-                ui.button(submit_text, on_click=handle_submit).props(
-                    "color=primary size=lg"
-                )
+                ui.button(submit_text, on_click=handle_submit).props("color=primary size=lg")
 
     @ui.page("/events/{folder_name}")
     def intake_page(folder_name: str) -> None:

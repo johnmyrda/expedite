@@ -22,9 +22,7 @@ def register_events_page() -> None:
                 ui.button(
                     icon="folder_open",
                     on_click=lambda: open_local_path(app_data_dir),
-                ).props("flat round dense").classes("text-primary").tooltip(
-                    str(app_data_dir)
-                )
+                ).props("flat round dense").classes("text-primary").tooltip(str(app_data_dir))
 
             with ui.card().classes("w-full"):
                 ui.label("Create New Event").classes("text-xl font-semibold")
@@ -48,19 +46,15 @@ def register_events_page() -> None:
                 ui.label("Recent Events").classes("text-xl font-semibold")
                 events = list_events()
                 if not events:
-                    ui.label("No events yet. Create one above to begin.").classes(
-                        "text-gray-500"
-                    )
+                    ui.label("No events yet. Create one above to begin.").classes("text-gray-500")
                 else:
                     for event in events:
-                        with ui.row().classes(
-                            "w-full items-center justify-between border-b py-2"
-                        ):
+                        with ui.row().classes("w-full items-center justify-between border-b py-2"):
                             with ui.column().classes("gap-0"):
                                 ui.label(event.name).classes("font-medium")
-                                ui.label(
-                                    f"{event.start_date} · {event.folder_name()}"
-                                ).classes("text-sm text-gray-500")
+                                ui.label(f"{event.start_date} · {event.folder_name()}").classes(
+                                    "text-sm text-gray-500"
+                                )
                             with ui.row().classes("gap-2"):
                                 ui.button(
                                     "Open",

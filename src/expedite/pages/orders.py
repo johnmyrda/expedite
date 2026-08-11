@@ -37,19 +37,13 @@ def register_orders_page() -> None:
                     ui.button(
                         icon="folder_open",
                         on_click=lambda: open_local_path(event.path),
-                    ).props("flat round dense").classes("text-primary").tooltip(
-                        str(event.path)
-                    )
+                    ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
                 with ui.row().classes("gap-2"):
                     ui.button(
                         "Intake",
-                        on_click=lambda: ui.navigate.to(
-                            f"/events/{event.folder_name()}"
-                        ),
+                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}"),
                     ).props("flat")
-                    ui.button("Events", on_click=lambda: ui.navigate.to("/")).props(
-                        "flat"
-                    )
+                    ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
 
             if not rows:
                 with ui.card().classes("w-full"):
@@ -58,9 +52,7 @@ def register_orders_page() -> None:
 
             with ui.card().classes("w-full"):
                 ui.label(f"{len(rows)} order(s)").classes("text-xl font-semibold")
-                with ui.row().classes(
-                    "w-full font-semibold border-b pb-2 items-center text-sm"
-                ):
+                with ui.row().classes("w-full font-semibold border-b pb-2 items-center text-sm"):
                     ui.label("ID").classes("w-16")
                     ui.label("Submitted").classes("w-44")
                     ui.label("Name").classes("w-40")
@@ -72,9 +64,7 @@ def register_orders_page() -> None:
                 for row in rows:
                     label_filename = row.get("label_filename") or ""
                     label_path = event.path / "labels" / label_filename
-                    with ui.row().classes(
-                        "w-full border-b py-2 items-center text-sm gap-2"
-                    ):
+                    with ui.row().classes("w-full border-b py-2 items-center text-sm gap-2"):
                         order_id = row.get("order_id", "")
                         with ui.row().classes("w-16 items-center gap-1"):
                             ui.label(order_id)
@@ -86,9 +76,7 @@ def register_orders_page() -> None:
                             ).props("flat round dense").classes("text-primary").tooltip(
                                 "Edit order"
                             )
-                        ui.label(display_timestamp(row.get("timestamp", ""))).classes(
-                            "w-44"
-                        )
+                        ui.label(display_timestamp(row.get("timestamp", ""))).classes("w-44")
                         ui.label(row.get("name", "")).classes("w-40")
                         ui.label(row.get("phone", "")).classes("w-40")
                         ui.label(row.get("work_request", "")).classes("grow")
@@ -97,11 +85,9 @@ def register_orders_page() -> None:
                             if label_filename:
                                 ui.button(
                                     icon="article",
-                                    on_click=lambda path=label_path: open_local_path(
-                                        path
-                                    ),
-                                ).props("flat round dense").classes(
-                                    "text-primary"
-                                ).tooltip(str(label_path))
+                                    on_click=lambda path=label_path: open_local_path(path),
+                                ).props("flat round dense").classes("text-primary").tooltip(
+                                    str(label_path)
+                                )
                             else:
                                 ui.label("—").classes("text-gray-400")

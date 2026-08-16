@@ -19,13 +19,21 @@ EVENT_INTAKE_DATA_DIR=/path/to/events uv run expedite
 
 ## Packaging
 
-Build a local single-file app with PyInstaller:
+Build a local macOS app with PyInstaller:
 
 ```bash
 uv run pyinstaller --noconfirm --clean --workpath build/pyinstaller --distpath dist build/expedite.spec
 ```
 
-The output is written under `dist/`. On macOS, launch `dist/Expedite.app` to avoid opening a Terminal window.
+On macOS, launch `dist/Expedite.app` to avoid opening a Terminal window.
+
+Build a local Windows EXE on Windows:
+
+```powershell
+uv run pyinstaller --noconfirm --clean --workpath build/pyinstaller --distpath dist build/expedite-windows.spec
+```
+
+The Windows output is written to `dist/Expedite.exe`.
 
 ## v1 Scope
 
@@ -34,4 +42,4 @@ The output is written under `dist/`. On macOS, launch `dist/Expedite.app` to avo
 - Sequential per-event order IDs
 - Appends each order to `orders.csv`
 - Saves 4x6 PNG labels under each event's `labels/` folder
-- No in-app printing or packaging/build automation
+- No in-app printing or automated cross-platform build workflow

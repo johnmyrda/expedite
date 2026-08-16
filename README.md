@@ -17,6 +17,16 @@ Event data defaults to the user's Documents folder when available. Override with
 EVENT_INTAKE_DATA_DIR=/path/to/events uv run expedite
 ```
 
+## Packaging
+
+Build a local single-file app with PyInstaller:
+
+```bash
+uv run pyinstaller --noconfirm --clean --workpath build/pyinstaller --distpath dist build/expedite.spec
+```
+
+The output is written under `dist/`. On macOS, launch `dist/Expedite.app` to avoid opening a Terminal window.
+
 ## v1 Scope
 
 - Fixed fields: Name, Phone, Work Request, Cost

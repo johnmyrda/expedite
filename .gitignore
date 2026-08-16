@@ -11,6 +11,10 @@ __pycache__/
 # Runtime event data
 data/
 
+# Build artifacts
+dist/
+build/pyinstaller/
+
 # Local editor and OS files
 .idea/
 .DS_Store

@@ -1,5 +1,6 @@
 """Pillow-based 4x6 label rendering."""
 
+import sys
 import textwrap
 from pathlib import Path
 from typing import TypeAlias
@@ -12,17 +13,49 @@ from expedite.models import Order
 LabelFont: TypeAlias = ImageFont.ImageFont | ImageFont.FreeTypeFont
 
 
-def _font(size: int, bold: bool = False) -> LabelFont:
-    names = (
-        "Arial Bold.ttf" if bold else "Arial.ttf",
+def _font_paths(bold: bool) -> tuple[str, ...]:
+    """Return likely cross-platform TrueType font paths/names.
+
+    Pillow's ``ImageFont.truetype`` does not reliably resolve family names on
+    Windows. If none of these are found, use Pillow's scalable default font
+    with the requested size instead of the tiny bitmap default.
+    """
+
+    if sys.platform == "win32":
+        windows_fonts = Path.home().anchor + "Windows/Fonts"
+        return (
+            str(Path(windows_fonts) / ("arialbd.ttf" if bold else "arial.ttf")),
+            str(Path(windows_fonts) / ("segoeuib.ttf" if bold else "segoeui.ttf")),
+            "arialbd.ttf" if bold else "arial.ttf",
+            "segoeuib.ttf" if bold else "segoeui.ttf",
+        )
+
+    if sys.platform == "darwin":
+        return (
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
+            if bold
+            else "/System/Library/Fonts/Supplemental/Arial.ttf",
+            "/System/Library/Fonts/Supplemental/Helvetica.ttc",
+            "/System/Library/Fonts/Supplemental/Arial.ttf",
+        )
+
+    return (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        if bold
+        else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+        "Arial Bold.ttf" if bold else "Arial.ttf",
+        "Arial.ttf",
     )
-    for name in names:
+
+
+def _font(size: int, bold: bool = False) -> LabelFont:
+    for path in _font_paths(bold):
         try:
-            return ImageFont.truetype(name, size)
+            return ImageFont.truetype(path, size)
         except OSError:
             continue
-    return ImageFont.load_default()
+    return ImageFont.load_default(size=size)
 
 
 def _draw_wrapped(

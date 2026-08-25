@@ -10,9 +10,11 @@ from expedite.storage.sqlite_store import (
     append_order,
     get_event_metadata,
     get_order,
+    list_catalog_items,
     list_order_records,
     next_order_id,
     orders_db_path,
+    save_catalog_item,
     save_event,
     update_order,
 )
@@ -95,6 +97,33 @@ def test_schema_uses_event_ids_indexes_and_order_foreign_key(tmp_path: Path) -> 
         row[2] == "events" and row[3] == "event_id" and row[4] == "id"
         for row in order_foreign_keys
     )
+
+
+def test_catalog_items_can_be_created_and_updated() -> None:
+    created = save_catalog_item(
+        item_id=None,
+        name="Stickbox Repair",
+        description="Repair and calibrate one stickbox.",
+        base_price_cents=2500,
+        active=True,
+    )
+
+    assert created.id is not None
+    assert list_catalog_items() == [created]
+
+    updated = save_catalog_item(
+        item_id=created.id,
+        name="Stickbox Replacement",
+        description=None,
+        base_price_cents=3000,
+        active=False,
+    )
+
+    assert updated.name == "Stickbox Replacement"
+    assert updated.description is None
+    assert updated.base_price_cents == 3000
+    assert not updated.active
+    assert len(list_catalog_items()) == 1
 
 
 def test_sqlite_store_appends_reads_and_updates_orders(tmp_path: Path) -> None:

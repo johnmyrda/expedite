@@ -8,6 +8,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from expedite.config import data_dir
 from expedite.models import (
+    CatalogItem,
     Event,
     EventRecord,
     Order,
@@ -98,6 +99,47 @@ def list_event_metadata() -> list[Event]:
         key=lambda event: event.created_at,
         reverse=True,
     )
+
+
+def list_catalog_items() -> list[CatalogItem]:
+    with _session() as session:
+        items = session.exec(select(CatalogItem)).all()
+    return sorted(items, key=lambda item: item.name.casefold())
+
+
+def save_catalog_item(
+    *,
+    item_id: int | None,
+    name: str,
+    description: str | None,
+    base_price_cents: int,
+    active: bool,
+) -> CatalogItem:
+    now = datetime.now().astimezone()
+    with _session() as session:
+        item = session.get(CatalogItem, item_id) if item_id is not None else None
+        if item_id is not None and item is None:
+            raise ValueError(f"Catalog item {item_id} does not exist.")
+        if item is None:
+            item = CatalogItem(
+                name=name,
+                description=description,
+                base_price_cents=base_price_cents,
+                active=active,
+                created_at=now,
+                updated_at=now,
+            )
+        else:
+            item.name = name
+            item.description = description
+            item.base_price_cents = base_price_cents
+            item.active = active
+            item.updated_at = now
+        session.add(item)
+        session.commit()
+        session.refresh(item)
+        session.expunge(item)
+    return item
 
 
 def list_order_records(event: Event) -> list[OrderRecord]:

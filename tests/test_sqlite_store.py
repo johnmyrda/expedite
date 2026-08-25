@@ -55,6 +55,19 @@ def test_schema_uses_event_ids_indexes_and_order_foreign_key(tmp_path: Path) -> 
         order_columns = {
             row[1]: row for row in connection.execute("PRAGMA table_info(orders)").fetchall()
         }
+        catalog_columns = {
+            row[1]: row for row in connection.execute("PRAGMA table_info(catalog)").fetchall()
+        }
+        event_price_columns = {
+            row[1]: row
+            for row in connection.execute(
+                "PRAGMA table_info(event_catalog_prices)"
+            ).fetchall()
+        }
+        order_line_columns = {
+            row[1]: row
+            for row in connection.execute("PRAGMA table_info(order_lines)").fetchall()
+        }
         event_indexes = {
             row[1] for row in connection.execute("PRAGMA index_list(events)").fetchall()
         }
@@ -62,8 +75,21 @@ def test_schema_uses_event_ids_indexes_and_order_foreign_key(tmp_path: Path) -> 
 
     assert "id" in event_columns
     assert "folder_name" in event_columns
+    assert "id" in order_columns
     assert "event_id" in order_columns
+    assert "order_number" in order_columns
+    assert "order_id" not in order_columns
     assert "event_folder_name" not in order_columns
+    assert {"id", "name", "base_price_cents", "active"} <= catalog_columns.keys()
+    assert {"event_id", "catalog_item_id", "price_cents"} <= event_price_columns.keys()
+    assert {
+        "id",
+        "order_id",
+        "catalog_item_id",
+        "description",
+        "quantity",
+        "unit_price_cents",
+    } <= order_line_columns.keys()
     assert any("folder_name" in index for index in event_indexes)
     assert any(
         row[2] == "events" and row[3] == "event_id" and row[4] == "id"

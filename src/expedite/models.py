@@ -1,7 +1,5 @@
 """Core domain models."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -10,23 +8,19 @@ from typing import Annotated
 
 import phonenumbers
 from phonenumbers import PhoneNumberFormat
-from phonenumbers.phonenumber import PhoneNumber
 from pydantic import BeforeValidator, StringConstraints
-from sqlmodel import Field, SQLModel
-
-
-def _normalize_cost_value(value: object) -> str:
-    if isinstance(value, Decimal):
-        return str(value)
-    if isinstance(value, str):
-        return value.strip().replace("$", "").replace(",", "")
-    if isinstance(value, int | float):
-        return str(value)
-    return ""
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, UniqueConstraint
+from sqlmodel import Field, Relationship, SQLModel
 
 
 def _parse_cost(value: object) -> str:
-    normalized = _normalize_cost_value(value)
+    if isinstance(value, str):
+        normalized = value.strip().replace("$", "").replace(",", "")
+    elif isinstance(value, Decimal | int | float):
+        normalized = str(value)
+    else:
+        normalized = ""
+
     try:
         amount = Decimal(normalized)
     except (InvalidOperation, ValueError) as error:
@@ -37,7 +31,7 @@ def _parse_cost(value: object) -> str:
     return normalized
 
 
-def _validated_phone_number(value: object) -> PhoneNumber:
+def normalize_phone(value: object) -> str:
     if not isinstance(value, str):
         raise ValueError("Phone number must be text.")
 
@@ -54,11 +48,7 @@ def _validated_phone_number(value: object) -> PhoneNumber:
     if not phonenumbers.is_valid_number(number):
         raise ValueError("Phone number is not a valid US number.")
 
-    return number
-
-
-def normalize_phone(value: object) -> str:
-    return phonenumbers.format_number(_validated_phone_number(value), PhoneNumberFormat.E164)
+    return phonenumbers.format_number(number, PhoneNumberFormat.E164)
 
 
 def normalize_phone_for_storage(value: object) -> str:
@@ -74,9 +64,9 @@ class Message:
 
 
 class EventBase(SQLModel):
-    name: str
-    start_date: str
-    created_at: datetime
+    name: str = Field(index=True)
+    start_date: str = Field(index=True)
+    created_at: datetime = Field(index=True)
 
 
 class Event(EventBase):
@@ -91,9 +81,25 @@ class EventRecord(EventBase, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     folder_name: str = Field(index=True, unique=True)
+    orders: list["OrderRecord"] = Relationship(back_populates="event")
+    catalog_prices: list["EventCatalogPrice"] = Relationship(back_populates="event")
+
+
+class CatalogItem(SQLModel, table=True):
+    __tablename__ = "catalog"
+    __table_args__ = (CheckConstraint("base_price_cents >= 0"),)
+
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)
-    start_date: str = Field(index=True)
-    created_at: datetime = Field(index=True)
+    description: str | None = None
+    base_price_cents: int
+    active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
+    updated_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
+    event_prices: list["EventCatalogPrice"] = Relationship(
+        back_populates="catalog_item"
+    )
+    order_lines: list["OrderLine"] = Relationship(back_populates="catalog_item")
 
 
 class OrderBase(SQLModel):
@@ -113,17 +119,53 @@ class Order(OrderBase):
     order_id: int
     event: Event
 
-    @classmethod
-    def from_row(cls, event: Event, row: dict[str, object]) -> Order:
-        return cls.model_validate({**row, "event": event})
-
-    def with_label_filename(self, label_filename: str) -> Order:
-        return self.model_copy(update={"label_filename": label_filename})
-
 
 class OrderRecord(OrderBase, table=True):
     __tablename__ = "orders"
+    __table_args__ = (UniqueConstraint("event_id", "order_number"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    event_id: int | None = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("events.id"), nullable=False, index=True),
+    )
+    order_id: int = Field(
+        sa_column=Column("order_number", Integer, nullable=False)
+    )
+    event: EventRecord | None = Relationship(back_populates="orders")
+    line_items: list["OrderLine"] = Relationship(back_populates="order")
+
+
+class EventCatalogPrice(SQLModel, table=True):
+    __tablename__ = "event_catalog_prices"
+    __table_args__ = (CheckConstraint("price_cents >= 0"),)
 
     event_id: int = Field(primary_key=True, foreign_key="events.id")
-    order_id: int = Field(primary_key=True)
-    label_filename: str = ""
+    catalog_item_id: int = Field(primary_key=True, foreign_key="catalog.id")
+    price_cents: int
+    event: EventRecord | None = Relationship(back_populates="catalog_prices")
+    catalog_item: CatalogItem | None = Relationship(back_populates="event_prices")
+
+
+class OrderLine(SQLModel, table=True):
+    __tablename__ = "order_lines"
+    __table_args__ = (
+        UniqueConstraint("order_id", "line_number"),
+        CheckConstraint("line_number > 0"),
+        CheckConstraint("quantity > 0"),
+        CheckConstraint("unit_price_cents >= 0"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    order_id: int | None = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("orders.id"), nullable=False, index=True),
+    )
+    line_number: int
+    catalog_item_id: int | None = Field(default=None, foreign_key="catalog.id")
+    description: str
+    quantity: int = 1
+    unit_price_cents: int
+    notes: str | None = None
+    order: OrderRecord | None = Relationship(back_populates="line_items")
+    catalog_item: CatalogItem | None = Relationship(back_populates="order_lines")

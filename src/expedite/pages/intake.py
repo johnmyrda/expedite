@@ -148,7 +148,9 @@ def register_intake_page() -> None:
                     )
 
                     label_path = render_label(order)
-                    saved_order = order.with_label_filename(label_path.name)
+                    saved_order = order.model_copy(
+                        update={"label_filename": label_path.name}
+                    )
                     if existing_order:
                         update_order(saved_order)
                     else:

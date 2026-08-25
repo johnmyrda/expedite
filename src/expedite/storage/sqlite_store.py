@@ -10,6 +10,7 @@ from expedite.config import data_dir
 from expedite.models import (
     CatalogItem,
     Event,
+    EventCatalogPrice,
     EventRecord,
     Order,
     OrderRecord,
@@ -140,6 +141,53 @@ def save_catalog_item(
         session.refresh(item)
         session.expunge(item)
     return item
+
+
+def event_catalog_prices(event: Event) -> dict[int, int]:
+    with _session() as session:
+        event_record = _event_record_by_folder(session, event.folder_name())
+        if event_record is None:
+            return {}
+        prices = list(event_record.catalog_prices)
+    return {
+        price.catalog_item_id: price.price_cents
+        for price in prices
+        if price.catalog_item_id is not None
+    }
+
+
+def save_event_catalog_price(
+    event: Event,
+    catalog_item_id: int,
+    price_cents: int | None,
+) -> None:
+    if price_cents is not None and price_cents < 0:
+        raise ValueError("Event price must be zero or greater.")
+
+    with _session() as session:
+        event_record = _ensure_event_record(session, event)
+        if event_record.id is None:
+            raise RuntimeError("Event ID was not created before saving event price.")
+        if session.get(CatalogItem, catalog_item_id) is None:
+            raise ValueError(f"Catalog item {catalog_item_id} does not exist.")
+
+        key = (event_record.id, catalog_item_id)
+        price = session.get(EventCatalogPrice, key)
+        if price_cents is None:
+            if price is not None:
+                session.delete(price)
+        elif price is None:
+            session.add(
+                EventCatalogPrice(
+                    event_id=event_record.id,
+                    catalog_item_id=catalog_item_id,
+                    price_cents=price_cents,
+                )
+            )
+        else:
+            price.price_cents = price_cents
+            session.add(price)
+        session.commit()
 
 
 def list_order_records(event: Event) -> list[OrderRecord]:

@@ -74,3 +74,9 @@ def register_events_page() -> None:
                                         f"/events/{e.folder_name()}/orders"
                                     ),
                                 ).props("flat")
+                                ui.button(
+                                    "Manage",
+                                    on_click=lambda e=event: ui.navigate.to(
+                                        f"/events/{e.folder_name()}/manage"
+                                    ),
+                                ).props("flat")

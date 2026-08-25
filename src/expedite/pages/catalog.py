@@ -1,29 +1,11 @@
 """Catalog management page."""
 
-from decimal import Decimal, InvalidOperation
-
 from nicegui import events, ui
 
 from expedite.config import APP_NAME
 from expedite.models import CatalogItem
+from expedite.money import display_price, parse_price_cents
 from expedite.storage.sqlite_store import list_catalog_items, save_catalog_item
-
-
-def _parse_price_cents(value: str | None) -> int:
-    normalized = (value or "").strip().replace("$", "").replace(",", "")
-    try:
-        amount = Decimal(normalized)
-    except InvalidOperation as error:
-        raise ValueError("Enter a valid price.") from error
-    if not amount.is_finite() or amount < 0:
-        raise ValueError("Price must be zero or greater.")
-    if amount != amount.quantize(Decimal("0.01")):
-        raise ValueError("Price cannot have more than two decimal places.")
-    return int(amount * 100)
-
-
-def _display_price(cents: int) -> str:
-    return f"${cents / 100:,.2f}"
 
 
 def register_catalog_page() -> None:
@@ -115,7 +97,7 @@ def register_catalog_page() -> None:
                                 ui.notify("Name is required.", type="negative")
                                 return
                             try:
-                                price_cents = _parse_price_cents(price_input.value)
+                                price_cents = parse_price_cents(price_input.value)
                             except ValueError as error:
                                 ui.notify(str(error), type="negative")
                                 return
@@ -163,7 +145,7 @@ def register_catalog_page() -> None:
                                     ui.label(item.description).classes(
                                         "text-sm text-gray-500"
                                     )
-                            ui.label(_display_price(item.base_price_cents)).classes(
+                            ui.label(display_price(item.base_price_cents)).classes(
                                 "font-medium whitespace-nowrap"
                             )
 

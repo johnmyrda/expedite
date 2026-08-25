@@ -58,6 +58,12 @@ def register_intake_page() -> None:
                     ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
                 with ui.row().classes("gap-2"):
                     ui.button(
+                        "Manage",
+                        on_click=lambda: ui.navigate.to(
+                            f"/events/{event.folder_name()}/manage"
+                        ),
+                    ).props("flat")
+                    ui.button(
                         "Orders",
                         on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/orders"),
                     ).props("flat")

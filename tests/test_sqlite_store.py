@@ -8,6 +8,7 @@ from expedite.models import Event, Order
 from expedite.storage.sqlite_store import (
     app_db_path,
     append_order,
+    event_catalog_prices,
     get_event_metadata,
     get_order,
     list_catalog_items,
@@ -16,6 +17,7 @@ from expedite.storage.sqlite_store import (
     orders_db_path,
     save_catalog_item,
     save_event,
+    save_event_catalog_price,
     update_order,
 )
 
@@ -124,6 +126,25 @@ def test_catalog_items_can_be_created_and_updated() -> None:
     assert updated.base_price_cents == 3000
     assert not updated.active
     assert len(list_catalog_items()) == 1
+
+
+def test_event_catalog_prices_can_be_set_and_cleared(tmp_path: Path) -> None:
+    event = _event(tmp_path)
+    save_event(event)
+    item = save_catalog_item(
+        item_id=None,
+        name="Paracord Cable",
+        description=None,
+        base_price_cents=2500,
+        active=True,
+    )
+    assert item.id is not None
+
+    save_event_catalog_price(event, item.id, 3000)
+    assert event_catalog_prices(event) == {item.id: 3000}
+
+    save_event_catalog_price(event, item.id, None)
+    assert event_catalog_prices(event) == {}
 
 
 def test_sqlite_store_appends_reads_and_updates_orders(tmp_path: Path) -> None:

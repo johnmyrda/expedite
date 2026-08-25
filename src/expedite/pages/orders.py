@@ -5,16 +5,12 @@ from datetime import datetime
 from nicegui import ui
 
 from expedite.local_files import open_local_path
-from expedite.storage.csv_store import read_order_rows
 from expedite.storage.events import get_event
+from expedite.storage.sqlite_store import list_order_records
 
 
-def display_timestamp(value: str) -> str:
-    try:
-        parsed = datetime.fromisoformat(value)
-    except ValueError:
-        return value
-    return parsed.isoformat(timespec="minutes").replace("T", " ")
+def display_timestamp(value: datetime) -> str:
+    return value.astimezone().isoformat(timespec="minutes").replace("T", " ")
 
 
 def register_orders_page() -> None:
@@ -28,7 +24,7 @@ def register_orders_page() -> None:
             return
 
         ui.page_title(f"{event.name} - Orders")
-        rows = read_order_rows(event)
+        orders = list_order_records(event)
 
         with ui.column().classes("w-full max-w-6xl mx-auto p-6 gap-6"):
             with ui.row().classes("w-full items-center justify-between"):
@@ -45,13 +41,13 @@ def register_orders_page() -> None:
                     ).props("flat")
                     ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
 
-            if not rows:
+            if not orders:
                 with ui.card().classes("w-full"):
                     ui.label("No orders yet.").classes("text-gray-500")
                 return
 
             with ui.card().classes("w-full"):
-                ui.label(f"{len(rows)} order(s)").classes("text-xl font-semibold")
+                ui.label(f"{len(orders)} order(s)").classes("text-xl font-semibold")
                 with ui.row().classes("w-full font-semibold border-b pb-2 items-center text-sm"):
                     ui.label("ID").classes("w-16")
                     ui.label("Submitted").classes("w-44")
@@ -61,26 +57,25 @@ def register_orders_page() -> None:
                     ui.label("Cost").classes("w-24")
                     ui.label("Label").classes("w-16")
 
-                for row in rows:
-                    label_filename = row.get("label_filename") or ""
+                for order in orders:
+                    label_filename = order.label_filename or ""
                     label_path = event.path / "labels" / label_filename
                     with ui.row().classes("w-full border-b py-2 items-center text-sm gap-2"):
-                        order_id = row.get("order_id", "")
                         with ui.row().classes("w-16 items-center gap-1"):
-                            ui.label(order_id)
+                            ui.label(str(order.order_id))
                             ui.button(
                                 icon="edit",
-                                on_click=lambda row_order_id=order_id: ui.navigate.to(
-                                    f"/events/{event.folder_name()}/orders/{row_order_id}/edit"
+                                on_click=lambda order_id=order.order_id: ui.navigate.to(
+                                    f"/events/{event.folder_name()}/orders/{order_id}/edit"
                                 ),
                             ).props("flat round dense").classes("text-primary").tooltip(
                                 "Edit order"
                             )
-                        ui.label(display_timestamp(row.get("timestamp", ""))).classes("w-44")
-                        ui.label(row.get("name", "")).classes("w-40")
-                        ui.label(row.get("phone", "")).classes("w-40")
-                        ui.label(row.get("work_request", "")).classes("grow")
-                        ui.label(row.get("cost", "")).classes("w-24")
+                        ui.label(display_timestamp(order.timestamp)).classes("w-44")
+                        ui.label(order.name).classes("w-40")
+                        ui.label(order.phone).classes("w-40")
+                        ui.label(order.work_request).classes("grow")
+                        ui.label(order.cost).classes("w-24")
                         with ui.row().classes("w-16"):
                             if label_filename:
                                 ui.button(

@@ -7,13 +7,13 @@ from nicegui import ui
 from expedite.label import render_label
 from expedite.local_files import open_local_path
 from expedite.models import Order
-from expedite.storage.csv_store import (
+from expedite.storage.events import get_event
+from expedite.storage.sqlite_store import (
     append_order,
     get_order,
     next_order_id,
     update_order,
 )
-from expedite.storage.events import get_event
 from expedite.validation import (
     validate_cost,
     validate_name,

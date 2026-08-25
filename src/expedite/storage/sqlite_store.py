@@ -1,5 +1,6 @@
 """Application-wide SQLite persistence using SQLModel."""
 
+import csv
 from datetime import datetime
 from pathlib import Path
 
@@ -13,11 +14,23 @@ from expedite.models import (
     EventCatalogPrice,
     EventRecord,
     Order,
+    OrderLine,
+    OrderLineItem,
     OrderRecord,
     normalize_phone_for_storage,
 )
 
 DATABASE_FILENAME = "expedite.sqlite3"
+ORDERS_CSV_FILENAME = "orders.csv"
+ORDER_EXPORT_COLUMNS = (
+    "order_number",
+    "timestamp",
+    "customer_name",
+    "phone",
+    "line_items",
+    "order_total",
+    "label_filename",
+)
 
 
 def app_db_path() -> Path:
@@ -200,6 +213,17 @@ def list_order_records(event: Event) -> list[OrderRecord]:
 
 
 def _order_from_record(event: Event, record: OrderRecord) -> Order:
+    line_items = [
+        OrderLineItem(
+            line_number=line.line_number,
+            catalog_item_id=line.catalog_item_id,
+            description=line.description,
+            quantity=line.quantity,
+            unit_price_cents=line.unit_price_cents,
+            notes=line.notes,
+        )
+        for line in sorted(record.line_items, key=lambda line: line.line_number)
+    ]
     return Order.model_construct(
         order_id=record.order_id,
         timestamp=_ensure_aware(record.timestamp),
@@ -209,6 +233,7 @@ def _order_from_record(event: Event, record: OrderRecord) -> Order:
         cost=record.cost,
         event=event,
         label_filename=record.label_filename or None,
+        line_items=line_items,
     )
 
 
@@ -221,9 +246,9 @@ def get_order(event: Event, order_id: int) -> Order | None:
             (order for order in event_record.orders if order.order_id == order_id),
             None,
         )
-    if record is None:
-        return None
-    return _order_from_record(event, record)
+        if record is None:
+            return None
+        return _order_from_record(event, record)
 
 
 def _order_record(order: Order) -> OrderRecord:
@@ -238,12 +263,67 @@ def _order_record(order: Order) -> OrderRecord:
     )
 
 
+def _order_line_record(line: OrderLineItem) -> OrderLine:
+    return OrderLine(
+        line_number=line.line_number,
+        catalog_item_id=line.catalog_item_id,
+        description=line.description,
+        quantity=line.quantity,
+        unit_price_cents=line.unit_price_cents,
+        notes=line.notes,
+    )
+
+
+def export_orders_csv(event: Event) -> Path:
+    with _session() as session:
+        event_record = _event_record_by_folder(session, event.folder_name())
+        records = (
+            sorted(event_record.orders, key=lambda record: record.order_id)
+            if event_record is not None
+            else []
+        )
+        orders = [_order_from_record(event, record) for record in records]
+
+    event.path.mkdir(parents=True, exist_ok=True)
+    output_path = event.path / ORDERS_CSV_FILENAME
+    temporary_path = output_path.with_suffix(".csv.tmp")
+    with temporary_path.open("w", newline="", encoding="utf-8-sig") as file:
+        writer = csv.DictWriter(file, fieldnames=ORDER_EXPORT_COLUMNS)
+        writer.writeheader()
+        for order in orders:
+            line_items = []
+            for line in order.line_items:
+                summary = (
+                    f"{line.quantity} x {line.description} @ "
+                    f"{line.unit_price_cents / 100:.2f}"
+                )
+                if line.notes:
+                    summary = f"{summary} ({line.notes})"
+                line_items.append(summary)
+            writer.writerow(
+                {
+                    "order_number": order.order_id,
+                    "timestamp": order.timestamp.isoformat(timespec="minutes"),
+                    "customer_name": order.name,
+                    "phone": order.phone,
+                    "line_items": "; ".join(line_items) or order.work_request,
+                    "order_total": order.cost,
+                    "label_filename": order.label_filename or "",
+                }
+            )
+    temporary_path.replace(output_path)
+    return output_path
+
+
 def append_order(order: Order) -> None:
     with _session() as session:
         event_record = _ensure_event_record(session, order.event)
-        event_record.orders.append(_order_record(order))
+        order_record = _order_record(order)
+        order_record.line_items = [_order_line_record(line) for line in order.line_items]
+        event_record.orders.append(order_record)
         session.add(event_record)
         session.commit()
+    export_orders_csv(order.event)
 
 
 def update_order(order: Order) -> None:
@@ -254,7 +334,11 @@ def update_order(order: Order) -> None:
             None,
         )
         if existing_order is None:
-            event_record.orders.append(_order_record(order))
+            replacement = _order_record(order)
+            replacement.line_items = [
+                _order_line_record(line) for line in order.line_items
+            ]
+            event_record.orders.append(replacement)
         else:
             replacement = _order_record(order)
             existing_order.timestamp = replacement.timestamp
@@ -263,8 +347,15 @@ def update_order(order: Order) -> None:
             existing_order.work_request = replacement.work_request
             existing_order.cost = replacement.cost
             existing_order.label_filename = replacement.label_filename
+            for line in list(existing_order.line_items):
+                session.delete(line)
+            session.flush()
+            existing_order.line_items = [
+                _order_line_record(line) for line in order.line_items
+            ]
         session.add(event_record)
         session.commit()
+    export_orders_csv(order.event)
 
 
 def next_order_id(event: Event) -> int:

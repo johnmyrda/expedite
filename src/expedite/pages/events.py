@@ -57,13 +57,16 @@ def register_events_page() -> None:
                     for event in events:
                         with ui.row().classes("w-full items-center justify-between border-b py-2"):
                             with ui.column().classes("gap-0"):
-                                ui.label(event.name).classes("font-medium")
+                                ui.link(
+                                    event.name,
+                                    f"/events/{event.folder_name()}/manage",
+                                ).classes("font-medium text-primary no-underline")
                                 ui.label(f"{event.start_date} · {event.folder_name()}").classes(
                                     "text-sm text-gray-500"
                                 )
                             with ui.row().classes("gap-2"):
                                 ui.button(
-                                    "Open",
+                                    "Intake",
                                     on_click=lambda e=event: ui.navigate.to(
                                         f"/events/{e.folder_name()}"
                                     ),
@@ -72,11 +75,5 @@ def register_events_page() -> None:
                                     "Orders",
                                     on_click=lambda e=event: ui.navigate.to(
                                         f"/events/{e.folder_name()}/orders"
-                                    ),
-                                ).props("flat")
-                                ui.button(
-                                    "Manage",
-                                    on_click=lambda e=event: ui.navigate.to(
-                                        f"/events/{e.folder_name()}/manage"
                                     ),
                                 ).props("flat")

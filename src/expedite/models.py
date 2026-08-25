@@ -115,9 +115,22 @@ class OrderBase(SQLModel):
     label_filename: str | None = None
 
 
+class OrderLineBase(SQLModel):
+    line_number: int
+    description: str
+    quantity: int = 1
+    unit_price_cents: int
+    notes: str | None = None
+
+
+class OrderLineItem(OrderLineBase):
+    catalog_item_id: int | None = None
+
+
 class Order(OrderBase):
     order_id: int
     event: Event
+    line_items: list[OrderLineItem] = Field(default_factory=list)
 
 
 class OrderRecord(OrderBase, table=True):
@@ -147,7 +160,7 @@ class EventCatalogPrice(SQLModel, table=True):
     catalog_item: CatalogItem | None = Relationship(back_populates="event_prices")
 
 
-class OrderLine(SQLModel, table=True):
+class OrderLine(OrderLineBase, table=True):
     __tablename__ = "order_lines"
     __table_args__ = (
         UniqueConstraint("order_id", "line_number"),
@@ -161,11 +174,6 @@ class OrderLine(SQLModel, table=True):
         default=None,
         sa_column=Column(Integer, ForeignKey("orders.id"), nullable=False, index=True),
     )
-    line_number: int
     catalog_item_id: int | None = Field(default=None, foreign_key="catalog.id")
-    description: str
-    quantity: int = 1
-    unit_price_cents: int
-    notes: str | None = None
     order: OrderRecord | None = Relationship(back_populates="line_items")
     catalog_item: CatalogItem | None = Relationship(back_populates="order_lines")

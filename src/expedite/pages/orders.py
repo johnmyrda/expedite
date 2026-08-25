@@ -6,7 +6,7 @@ from nicegui import ui
 
 from expedite.local_files import open_local_path
 from expedite.storage.events import get_event
-from expedite.storage.sqlite_store import list_order_records
+from expedite.storage.sqlite_store import export_orders_csv, list_order_records
 
 
 def display_timestamp(value: datetime) -> str:
@@ -35,6 +35,15 @@ def register_orders_page() -> None:
                         on_click=lambda: open_local_path(event.path),
                     ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
                 with ui.row().classes("gap-2"):
+                    def handle_export() -> None:
+                        path = export_orders_csv(event)
+                        ui.notify(f"Exported orders to {path.name}", type="positive")
+
+                    ui.button(
+                        "Export to CSV",
+                        icon="download",
+                        on_click=handle_export,
+                    ).props("flat")
                     ui.button(
                         "Manage",
                         on_click=lambda: ui.navigate.to(

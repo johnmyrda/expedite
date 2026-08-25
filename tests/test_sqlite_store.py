@@ -1,10 +1,11 @@
+import csv
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 
 import pytest
 
-from expedite.models import Event, Order
+from expedite.models import Event, Order, OrderLineItem
 from expedite.storage.sqlite_store import (
     app_db_path,
     append_order,
@@ -159,6 +160,15 @@ def test_sqlite_store_appends_reads_and_updates_orders(tmp_path: Path) -> None:
         cost="12.50",
         event=event,
         label_filename="old.png",
+        line_items=[
+            OrderLineItem(
+                line_number=1,
+                catalog_item_id=None,
+                description="Custom repair",
+                quantity=1,
+                unit_price_cents=1250,
+            )
+        ],
     )
 
     append_order(order)
@@ -166,14 +176,50 @@ def test_sqlite_store_appends_reads_and_updates_orders(tmp_path: Path) -> None:
     assert orders_db_path(event).exists()
     assert next_order_id(event) == 2
     assert list_order_records(event)[0].phone == "+16502530000"
+    export_path = event.path / "orders.csv"
+    with export_path.open(encoding="utf-8-sig", newline="") as file:
+        exported_rows = list(csv.DictReader(file))
+    assert len(exported_rows) == 1
+    assert exported_rows[0]["line_items"] == "1 x Custom repair @ 12.50"
+    assert exported_rows[0]["timestamp"] == timestamp.isoformat(timespec="minutes")
+    assert "catalog_item_id" not in exported_rows[0]
 
     saved = get_order(event, 1)
     assert saved is not None
     assert saved.work_request == "Original"
+    assert len(saved.line_items) == 1
+    assert saved.line_items[0].description == "Custom repair"
 
-    update_order(saved.model_copy(update={"work_request": "Updated", "label_filename": "new.png"}))
+    update_order(
+        saved.model_copy(
+            update={
+                "work_request": "Updated",
+                "cost": "30.00",
+                "label_filename": "new.png",
+                "line_items": [
+                    OrderLineItem(
+                        line_number=1,
+                        catalog_item_id=None,
+                        description="Replacement service",
+                        quantity=2,
+                        unit_price_cents=1500,
+                    )
+                ],
+            }
+        )
+    )
 
     orders = list_order_records(event)
     assert len(orders) == 1
     assert orders[0].work_request == "Updated"
     assert orders[0].label_filename == "new.png"
+    updated = get_order(event, 1)
+    assert updated is not None
+    assert len(updated.line_items) == 1
+    assert updated.line_items[0].description == "Replacement service"
+    assert updated.line_items[0].quantity == 2
+    with export_path.open(encoding="utf-8-sig", newline="") as file:
+        exported_rows = list(csv.DictReader(file))
+    assert len(exported_rows) == 1
+    assert exported_rows[0]["line_items"] == "2 x Replacement service @ 15.00"
+    assert exported_rows[0]["order_total"] == "30.00"

@@ -190,14 +190,7 @@ def list_order_records(event: Event) -> list[OrderRecord]:
 
 def _order_from_record(event: Event, record: OrderRecord) -> Order:
     line_items = [
-        OrderLine(
-            line_number=line.line_number,
-            catalog_item_id=line.catalog_item_id,
-            description=line.description,
-            quantity=line.quantity,
-            unit_price_cents=line.unit_price_cents,
-            notes=line.notes,
-        )
+        OrderLine.model_validate(line)
         for line in sorted(record.line_items, key=lambda line: line.line_number)
     ]
     return Order.model_construct(
@@ -237,14 +230,8 @@ def _order_record(order: Order) -> OrderRecord:
 
 
 def _order_line_record(line: OrderLine) -> OrderLineRecord:
-    return OrderLineRecord(
-        line_number=line.line_number,
-        catalog_item_id=line.catalog_item_id,
-        description=line.description,
-        quantity=line.quantity,
-        unit_price_cents=line.unit_price_cents,
-        notes=line.notes,
-    )
+    values = line.model_dump(include=set(OrderLine.model_fields))
+    return OrderLineRecord.model_validate(values)
 
 
 def export_orders_csv(event: Event) -> Path:

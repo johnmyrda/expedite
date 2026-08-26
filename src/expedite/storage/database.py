@@ -2,6 +2,7 @@
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from importlib import import_module
 from pathlib import Path
 from threading import Lock
 
@@ -34,8 +35,12 @@ def _enable_sqlite_foreign_keys(
 
 
 def _create_engine(path: Path) -> Engine:
+    import_module("expedite.models")
     path.parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(f"sqlite:///{path}")
+    engine = create_engine(
+        f"sqlite:///{path}",
+        connect_args={"check_same_thread": False},
+    )
     sqlalchemy_event.listen(engine, "connect", _enable_sqlite_foreign_keys)
     SQLModel.metadata.create_all(engine)
     return engine

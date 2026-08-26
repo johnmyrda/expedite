@@ -29,5 +29,11 @@ class EventRecord(EventBase, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     folder_name: str = Field(index=True, unique=True)
-    orders: list["OrderRecord"] = Relationship(back_populates="event")
-    catalog_prices: list["EventCatalogPrice"] = Relationship(back_populates="event")
+    orders: list["OrderRecord"] = Relationship(
+        back_populates="event",
+        cascade_delete=True,
+    )
+    catalog_prices: list["EventCatalogPrice"] = Relationship(
+        back_populates="event",
+        cascade_delete=True,
+    )

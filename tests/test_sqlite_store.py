@@ -6,9 +6,10 @@ from pathlib import Path
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from expedite.models import Event, Order, OrderLine
+from expedite.models import Event, Order, OrderLine, OrderLineRecord
 from expedite.storage.database import engine
 from expedite.storage.sqlite_store import (
+    _order_line_record,
     app_db_path,
     append_order,
     event_catalog_prices,
@@ -76,6 +77,9 @@ def test_schema_uses_event_ids_indexes_and_order_foreign_key(tmp_path: Path) -> 
             row[1] for row in connection.execute("PRAGMA index_list(events)").fetchall()
         }
         order_foreign_keys = connection.execute("PRAGMA foreign_key_list(orders)").fetchall()
+        order_line_foreign_keys = connection.execute(
+            "PRAGMA foreign_key_list(order_lines)"
+        ).fetchall()
 
     assert "id" in event_columns
     assert "folder_name" in event_columns
@@ -96,7 +100,25 @@ def test_schema_uses_event_ids_indexes_and_order_foreign_key(tmp_path: Path) -> 
     } <= order_line_columns.keys()
     assert any("folder_name" in index for index in event_indexes)
     assert any(
-        row[2] == "events" and row[3] == "event_id" and row[4] == "id" for row in order_foreign_keys
+        row[2] == "events"
+        and row[3] == "event_id"
+        and row[4] == "id"
+        and row[6] == "CASCADE"
+        for row in order_foreign_keys
+    )
+    assert any(
+        row[2] == "orders"
+        and row[3] == "order_id"
+        and row[4] == "id"
+        and row[6] == "CASCADE"
+        for row in order_line_foreign_keys
+    )
+    assert any(
+        row[2] == "catalog"
+        and row[3] == "catalog_item_id"
+        and row[4] == "id"
+        and row[6] == "SET NULL"
+        for row in order_line_foreign_keys
     )
 
 
@@ -159,6 +181,23 @@ def test_event_catalog_prices_can_be_set_and_cleared(tmp_path: Path) -> None:
 
     save_event_catalog_price(event, item.id, None)
     assert event_catalog_prices(event) == {}
+
+
+def test_order_line_mapping_does_not_copy_persistence_identity() -> None:
+    record = OrderLineRecord(
+        id=41,
+        order_id=23,
+        line_number=1,
+        description="Repair",
+        quantity=1,
+        unit_price_cents=2500,
+    )
+
+    mapped = _order_line_record(record)
+
+    assert mapped.id is None
+    assert mapped.order_id is None
+    assert mapped.description == "Repair"
 
 
 def test_sqlite_store_appends_reads_and_updates_orders(tmp_path: Path) -> None:

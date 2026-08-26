@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Annotated, Optional
 
 from pydantic import BeforeValidator, StringConstraints
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, Integer, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 from expedite.models.event import Event, EventRecord
@@ -69,11 +69,17 @@ class OrderRecord(OrderBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     event_id: int | None = Field(
         default=None,
-        sa_column=Column(Integer, ForeignKey("events.id"), nullable=False, index=True),
+        foreign_key="events.id",
+        nullable=False,
+        index=True,
+        ondelete="CASCADE",
     )
     order_id: int = Field(sa_column=Column("order_number", Integer, nullable=False))
     event: EventRecord | None = Relationship(back_populates="orders")
-    line_items: list["OrderLineRecord"] = Relationship(back_populates="order")
+    line_items: list["OrderLineRecord"] = Relationship(
+        back_populates="order",
+        cascade_delete=True,
+    )
 
 
 class OrderLineRecord(OrderLine, table=True):
@@ -88,8 +94,15 @@ class OrderLineRecord(OrderLine, table=True):
     id: int | None = Field(default=None, primary_key=True)
     order_id: int | None = Field(
         default=None,
-        sa_column=Column(Integer, ForeignKey("orders.id"), nullable=False, index=True),
+        foreign_key="orders.id",
+        nullable=False,
+        index=True,
+        ondelete="CASCADE",
     )
-    catalog_item_id: int | None = Field(default=None, foreign_key="catalog.id")
+    catalog_item_id: int | None = Field(
+        default=None,
+        foreign_key="catalog.id",
+        ondelete="SET NULL",
+    )
     order: OrderRecord | None = Relationship(back_populates="line_items")
     catalog_item: Optional["CatalogItem"] = Relationship(back_populates="order_lines")

@@ -22,5 +22,10 @@ class CatalogItem(SQLModel, table=True):
     active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
     updated_at: datetime = Field(default_factory=lambda: datetime.now().astimezone())
-    event_prices: list["EventCatalogPrice"] = Relationship(back_populates="catalog_item")
-    order_lines: list["OrderLineRecord"] = Relationship(back_populates="catalog_item")
+    event_prices: list["EventCatalogPrice"] = Relationship(
+        back_populates="catalog_item",
+        cascade_delete=True,
+    )
+    order_lines: list["OrderLineRecord"] = Relationship(
+        back_populates="catalog_item"
+    )

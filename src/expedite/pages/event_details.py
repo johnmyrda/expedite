@@ -63,9 +63,7 @@ def register_event_details_page() -> None:
                         if not name or not start_date:
                             ui.notify("Event name and start date are required.", type="negative")
                             return
-                        event = event.model_copy(
-                            update={"name": name, "start_date": start_date}
-                        )
+                        event = event.model_copy(update={"name": name, "start_date": start_date})
                         save_event(event)
                         title.text = f"Manage {event.name}"
                         ui.page_title(f"{event.name} - Manage")
@@ -75,9 +73,9 @@ def register_event_details_page() -> None:
 
             with ui.card().classes("w-full"):
                 ui.label("Catalog Price Overrides").classes("text-xl font-semibold")
-                ui.label(
-                    "Leave an event price blank to use the catalog base price."
-                ).classes("text-sm text-gray-500")
+                ui.label("Leave an event price blank to use the catalog base price.").classes(
+                    "text-sm text-gray-500"
+                )
                 with ui.row().classes("w-full items-center gap-3 flex-wrap"):
                     filter_input = (
                         ui.input("Filter by name or description")
@@ -107,10 +105,7 @@ def register_event_details_page() -> None:
                         has_override = item.id in overrides
                         matches_pricing = (
                             filters["pricing"] == "all"
-                            or (
-                                filters["pricing"] == "overridden"
-                                and has_override
-                            )
+                            or (filters["pricing"] == "overridden" and has_override)
                             or (filters["pricing"] == "base" and not has_override)
                         )
                         if matches_text and matches_pricing:
@@ -135,19 +130,15 @@ def register_event_details_page() -> None:
                                         if not item.active:
                                             ui.badge("Inactive", color="grey")
                                     if item.description:
-                                        ui.label(item.description).classes(
-                                            "text-sm text-gray-500"
-                                        )
-                                ui.label(
-                                    f"Base: {display_price(item.base_price_cents)}"
-                                ).classes("w-32 text-sm text-gray-600")
+                                        ui.label(item.description).classes("text-sm text-gray-500")
+                                ui.label(f"Base: {display_price(item.base_price_cents)}").classes(
+                                    "w-32 text-sm text-gray-600"
+                                )
                                 price_input = (
                                     ui.input(
                                         "Event price",
                                         value=(
-                                            f"{override / 100:.2f}"
-                                            if override is not None
-                                            else ""
+                                            f"{override / 100:.2f}" if override is not None else ""
                                         ),
                                     )
                                     .props("outlined dense prefix=$ inputmode=decimal")
@@ -163,16 +154,12 @@ def register_event_details_page() -> None:
                                     raw_value = (price_field.value or "").strip()
                                     try:
                                         price_cents = (
-                                            parse_price_cents(raw_value)
-                                            if raw_value
-                                            else None
+                                            parse_price_cents(raw_value) if raw_value else None
                                         )
                                     except ValueError as error:
                                         ui.notify(str(error), type="negative")
                                         return
-                                    save_event_catalog_price(
-                                        event, catalog_item_id, price_cents
-                                    )
+                                    save_event_catalog_price(event, catalog_item_id, price_cents)
                                     message = (
                                         "Override saved"
                                         if price_cents is not None
@@ -186,22 +173,19 @@ def register_event_details_page() -> None:
                                 ).tooltip("Save event price")
 
                                 if override is not None:
+
                                     def clear_override(
                                         catalog_item_id: int | None = item.id,
                                     ) -> None:
                                         if catalog_item_id is None:
                                             return
-                                        save_event_catalog_price(
-                                            event, catalog_item_id, None
-                                        )
+                                        save_event_catalog_price(event, catalog_item_id, None)
                                         ui.notify("Override cleared", type="positive")
                                         price_list.refresh()
 
-                                    ui.button(
-                                        icon="restart_alt", on_click=clear_override
-                                    ).props("flat round dense").tooltip(
-                                        "Use catalog base price"
-                                    )
+                                    ui.button(icon="restart_alt", on_click=clear_override).props(
+                                        "flat round dense"
+                                    ).tooltip("Use catalog base price")
 
                 def handle_filter_change(
                     change: events.ValueChangeEventArguments[str | None],

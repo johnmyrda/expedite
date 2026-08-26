@@ -37,9 +37,7 @@ def register_catalog_page() -> None:
                     state["creating"] = True
                     item_list.refresh()
 
-                ui.button("New Item", icon="add", on_click=start_create).props(
-                    "color=primary"
-                )
+                ui.button("New Item", icon="add", on_click=start_create).props("color=primary")
 
             @ui.refreshable
             def item_list() -> None:
@@ -70,11 +68,7 @@ def register_catalog_page() -> None:
                             price_input = (
                                 ui.input(
                                     "Base price",
-                                    value=(
-                                        f"{item.base_price_cents / 100:.2f}"
-                                        if item
-                                        else ""
-                                    ),
+                                    value=(f"{item.base_price_cents / 100:.2f}" if item else ""),
                                 )
                                 .props("outlined dense prefix=$ inputmode=decimal")
                                 .classes("w-40")
@@ -105,8 +99,7 @@ def register_catalog_page() -> None:
                             saved = save_catalog_item(
                                 item_id=item.id if item else None,
                                 name=name,
-                                description=(description_input.value or "").strip()
-                                or None,
+                                description=(description_input.value or "").strip() or None,
                                 base_price_cents=price_cents,
                                 active=bool(active_input.value),
                             )
@@ -133,18 +126,14 @@ def register_catalog_page() -> None:
                             render_editor(item)
                             continue
 
-                        with ui.row().classes(
-                            "w-full items-center gap-4 px-4 py-3 border-b"
-                        ):
+                        with ui.row().classes("w-full items-center gap-4 px-4 py-3 border-b"):
                             with ui.column().classes("grow min-w-0 gap-0"):
                                 with ui.row().classes("items-center gap-2"):
                                     ui.label(item.name).classes("font-medium")
                                     if not item.active:
                                         ui.badge("Inactive", color="grey")
                                 if item.description:
-                                    ui.label(item.description).classes(
-                                        "text-sm text-gray-500"
-                                    )
+                                    ui.label(item.description).classes("text-sm text-gray-500")
                             ui.label(display_price(item.base_price_cents)).classes(
                                 "font-medium whitespace-nowrap"
                             )

@@ -23,12 +23,8 @@ def register_events_page() -> None:
                     ui.button(
                         icon="folder_open",
                         on_click=lambda: open_local_path(app_data_dir),
-                    ).props("flat round dense").classes("text-primary").tooltip(
-                        str(app_data_dir)
-                    )
-                ui.button("Catalog", on_click=lambda: ui.navigate.to("/catalog")).props(
-                    "flat"
-                )
+                    ).props("flat round dense").classes("text-primary").tooltip(str(app_data_dir))
+                ui.button("Catalog", on_click=lambda: ui.navigate.to("/catalog")).props("flat")
 
             with ui.card().classes("w-full"):
                 ui.label("Create New Event").classes("text-xl font-semibold")

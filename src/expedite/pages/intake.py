@@ -7,7 +7,7 @@ from nicegui import events, ui
 
 from expedite.label import render_label
 from expedite.local_files import open_local_path
-from expedite.models import Order, OrderLineItem
+from expedite.models import Order, OrderLine
 from expedite.money import display_price, parse_price_cents
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
@@ -103,15 +103,11 @@ def register_intake_page() -> None:
                 with ui.row().classes("gap-2"):
                     ui.button(
                         "Manage",
-                        on_click=lambda: ui.navigate.to(
-                            f"/events/{event.folder_name()}/manage"
-                        ),
+                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/manage"),
                     ).props("flat")
                     ui.button(
                         "Orders",
-                        on_click=lambda: ui.navigate.to(
-                            f"/events/{event.folder_name()}/orders"
-                        ),
+                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/orders"),
                     ).props("flat")
                     ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
 
@@ -193,9 +189,7 @@ def register_intake_page() -> None:
                                     .classes("grow min-w-56")
                                 )
 
-                                def catalog_option_label(
-                                    item_id: int, name: str
-                                ) -> str:
+                                def catalog_option_label(item_id: int, name: str) -> str:
                                     item = catalog_by_id[item_id]
                                     price = overrides.get(item_id, item.base_price_cents)
                                     return f"{name} · {display_price(price)}"
@@ -205,12 +199,11 @@ def register_intake_page() -> None:
                                     for item_id, name in catalog_options.items()
                                     if item_id
                                 }
-                                with ui.dialog() as full_catalog_dialog, ui.card().classes(
-                                    "w-full max-w-xl"
+                                with (
+                                    ui.dialog() as full_catalog_dialog,
+                                    ui.card().classes("w-full max-w-xl"),
                                 ):
-                                    ui.label("Select Catalog Item").classes(
-                                        "text-lg font-semibold"
-                                    )
+                                    ui.label("Select Catalog Item").classes("text-lg font-semibold")
                                     full_select = (
                                         ui.select(
                                             full_options,
@@ -258,13 +251,12 @@ def register_intake_page() -> None:
                                 )
                                 price_input = (
                                     ui.input("Unit price", value=line.unit_price)
-                                    .props(
-                                        "outlined dense prefix=$ inputmode=decimal"
-                                    )
+                                    .props("outlined dense prefix=$ inputmode=decimal")
                                     .classes("w-36")
                                 )
 
                                 if not line.notes and not line.show_notes:
+
                                     def show_notes() -> None:
                                         line.show_notes = True
                                         line_editor.refresh()
@@ -304,17 +296,14 @@ def register_intake_page() -> None:
                                 with ui.column().classes(
                                     "w-full max-w-xl gap-0 border rounded bg-white"
                                 ):
+
                                     def render_suggestion(item_id: int) -> None:
                                         item = catalog_by_id[item_id]
-                                        price = overrides.get(
-                                            item_id, item.base_price_cents
-                                        )
+                                        price = overrides.get(item_id, item.base_price_cents)
                                         ui.button(
                                             f"{item.name} · {display_price(price)}",
                                             on_click=lambda: choose_catalog_item(item_id),
-                                        ).props(
-                                            "flat no-caps align=left"
-                                        ).classes("w-full")
+                                        ).props("flat no-caps align=left").classes("w-full")
 
                                     for match in matches:
                                         if match.id is not None:
@@ -356,6 +345,7 @@ def register_intake_page() -> None:
                             price_input.on_value_change(change_price)
 
                             if notes_input is not None:
+
                                 def change_notes(
                                     change: events.ValueChangeEventArguments[str | None],
                                 ) -> None:
@@ -393,8 +383,8 @@ def register_intake_page() -> None:
                     else:
                         warning_box.classes(add="hidden")
 
-                def collect_line_items() -> tuple[list[OrderLineItem], list[str]]:
-                    lines: list[OrderLineItem] = []
+                def collect_line_items() -> tuple[list[OrderLine], list[str]]:
+                    lines: list[OrderLine] = []
                     warnings: list[str] = []
                     for draft in line_drafts:
                         if not (
@@ -414,7 +404,7 @@ def register_intake_page() -> None:
                             price_cents = 0
                             warnings.append(f"{description}: {error} Saved at $0.00.")
                         lines.append(
-                            OrderLineItem(
+                            OrderLine(
                                 line_number=len(lines) + 1,
                                 catalog_item_id=draft.catalog_item_id,
                                 description=description,
@@ -438,20 +428,19 @@ def register_intake_page() -> None:
 
                 def handle_submit() -> None:
                     line_items, warnings = collect_line_items()
-                    work_request = "; ".join(
-                        f"{line.description} x{line.quantity}"
-                        if line.quantity > 1
-                        else line.description
-                        for line in line_items
-                    ) or "No line items"
-                    total_cents = sum(
-                        line.quantity * line.unit_price_cents for line in line_items
+                    work_request = (
+                        "; ".join(
+                            f"{line.description} x{line.quantity}"
+                            if line.quantity > 1
+                            else line.description
+                            for line in line_items
+                        )
+                        or "No line items"
                     )
+                    total_cents = sum(line.quantity * line.unit_price_cents for line in line_items)
                     order = Order.model_construct(
                         order_id=(
-                            existing_order.order_id
-                            if existing_order
-                            else next_order_id(event)
+                            existing_order.order_id if existing_order else next_order_id(event)
                         ),
                         timestamp=(
                             existing_order.timestamp
@@ -467,9 +456,7 @@ def register_intake_page() -> None:
                     )
 
                     label_path = render_label(order)
-                    saved_order = order.model_copy(
-                        update={"label_filename": label_path.name}
-                    )
+                    saved_order = order.model_copy(update={"label_filename": label_path.name})
                     if existing_order:
                         update_order(saved_order)
                     else:
@@ -479,18 +466,13 @@ def register_intake_page() -> None:
                     status_area.clear()
                     with status_area, ui.row().classes("items-center gap-2"):
                         verb = "Updated" if existing_order else "Saved"
-                        ui.label(f"{verb} order #{saved_order.order_id}").classes(
-                            "text-positive"
-                        )
+                        ui.label(f"{verb} order #{saved_order.order_id}").classes("text-positive")
                         ui.button(
                             icon="article",
                             on_click=lambda path=label_path: open_local_path(path),
-                        ).props("flat round dense").classes("text-primary").tooltip(
-                            str(label_path)
-                        )
+                        ).props("flat round dense").classes("text-primary").tooltip(str(label_path))
                     ui.notify(
-                        f"{'Updated' if existing_order else 'Saved'} order "
-                        f"#{saved_order.order_id}",
+                        f"{'Updated' if existing_order else 'Saved'} order #{saved_order.order_id}",
                         type="positive",
                     )
                     if not existing_order:
@@ -498,9 +480,7 @@ def register_intake_page() -> None:
                         order_title.text = f"Order #{next_order_id(event)}"
 
                 submit_text = "Save Changes" if existing_order else "Submit Order"
-                ui.button(submit_text, on_click=handle_submit).props(
-                    "color=primary size=lg"
-                )
+                ui.button(submit_text, on_click=handle_submit).props("color=primary size=lg")
 
     @ui.page("/events/{folder_name}")
     def intake_page(folder_name: str) -> None:

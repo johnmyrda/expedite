@@ -4,8 +4,10 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
-from expedite.models import Event, Order, OrderLineItem
+from expedite.models import Event, Order, OrderLine
+from expedite.storage.database import engine
 from expedite.storage.sqlite_store import (
     app_db_path,
     append_order,
@@ -65,13 +67,10 @@ def test_schema_uses_event_ids_indexes_and_order_foreign_key(tmp_path: Path) -> 
         }
         event_price_columns = {
             row[1]: row
-            for row in connection.execute(
-                "PRAGMA table_info(event_catalog_prices)"
-            ).fetchall()
+            for row in connection.execute("PRAGMA table_info(event_catalog_prices)").fetchall()
         }
         order_line_columns = {
-            row[1]: row
-            for row in connection.execute("PRAGMA table_info(order_lines)").fetchall()
+            row[1]: row for row in connection.execute("PRAGMA table_info(order_lines)").fetchall()
         }
         event_indexes = {
             row[1] for row in connection.execute("PRAGMA index_list(events)").fetchall()
@@ -97,9 +96,23 @@ def test_schema_uses_event_ids_indexes_and_order_foreign_key(tmp_path: Path) -> 
     } <= order_line_columns.keys()
     assert any("folder_name" in index for index in event_indexes)
     assert any(
-        row[2] == "events" and row[3] == "event_id" and row[4] == "id"
-        for row in order_foreign_keys
+        row[2] == "events" and row[3] == "event_id" and row[4] == "id" for row in order_foreign_keys
     )
+
+
+def test_sqlite_foreign_keys_are_enforced(tmp_path: Path) -> None:
+    save_event(_event(tmp_path))
+
+    with engine().connect() as connection:
+        assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
+        with pytest.raises(IntegrityError):
+            connection.exec_driver_sql(
+                """
+                INSERT INTO order_lines (
+                    order_id, line_number, description, quantity, unit_price_cents
+                ) VALUES (999, 1, 'Orphan line', 1, 1000)
+                """
+            )
 
 
 def test_catalog_items_can_be_created_and_updated() -> None:
@@ -161,7 +174,7 @@ def test_sqlite_store_appends_reads_and_updates_orders(tmp_path: Path) -> None:
         event=event,
         label_filename="old.png",
         line_items=[
-            OrderLineItem(
+            OrderLine(
                 line_number=1,
                 catalog_item_id=None,
                 description="Custom repair",
@@ -197,7 +210,7 @@ def test_sqlite_store_appends_reads_and_updates_orders(tmp_path: Path) -> None:
                 "cost": "30.00",
                 "label_filename": "new.png",
                 "line_items": [
-                    OrderLineItem(
+                    OrderLine(
                         line_number=1,
                         catalog_item_id=None,
                         description="Replacement service",

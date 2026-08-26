@@ -35,6 +35,7 @@ def register_orders_page() -> None:
                         on_click=lambda: open_local_path(event.path),
                     ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
                 with ui.row().classes("gap-2"):
+
                     def handle_export() -> None:
                         path = export_orders_csv(event)
                         ui.notify(f"Exported orders to {path.name}", type="positive")
@@ -46,9 +47,7 @@ def register_orders_page() -> None:
                     ).props("flat")
                     ui.button(
                         "Manage",
-                        on_click=lambda: ui.navigate.to(
-                            f"/events/{event.folder_name()}/manage"
-                        ),
+                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/manage"),
                     ).props("flat")
                     ui.button(
                         "Intake",

@@ -1,0 +1,80 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      artifact-id:
+        description: GitHub artifact ID for the Windows build
+        value: ${{ jobs.build-windows.outputs.artifact-id }}
+      artifact-url:
+        description: URL for the Windows build artifact
+        value: ${{ jobs.build-windows.outputs.artifact-url }}
+      artifact-digest:
+        description: SHA-256 digest for the Windows build artifact
+        value: ${{ jobs.build-windows.outputs.artifact-digest }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-windows:
+    name: Test and build Windows app
+    runs-on: windows-latest
+    timeout-minutes: 30
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      artifact-url: ${{ steps.upload.outputs.artifact-url }}
+      artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run quality checks
+        run: |
+          uv run ruff check .
+          uv run ty check
+          uv run pytest
+
+      - name: Build Windows onedir application
+        run: >-
+          uv run pyinstaller
+          --noconfirm
+          --clean
+          --workpath build/pyinstaller
+          --distpath dist
+          build/expedite-windows.spec
+
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist/Expedite/Expedite.exe")) {
+            throw "Windows executable was not generated."
+          }
+          Get-ChildItem "dist/Expedite" -Recurse |
+            Measure-Object -Property Length -Sum |
+            Select-Object Count, Sum
+
+      - name: Upload Windows application
+        id: upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: expedite-windows
+          path: dist/Expedite/
+          if-no-files-found: error
+          retention-days: 14

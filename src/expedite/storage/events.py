@@ -1,16 +1,12 @@
 """Event folder creation and discovery."""
 
-import json
 import re
 from datetime import datetime
 from pathlib import Path
 
-from pydantic import ValidationError
-
 from expedite.config import data_dir
 from expedite.models import Event
-
-METADATA_FILE = "event.json"
+from expedite.storage.sqlite_store import get_event_metadata, list_event_metadata, save_event
 
 
 def _slugify(value: str) -> str:
@@ -34,10 +30,6 @@ def ensure_data_dir() -> Path:
     return root
 
 
-def _metadata_path(event: Event) -> Path:
-    return event.path / METADATA_FILE
-
-
 def create_event(name: str, start_date: str | None = None) -> Event:
     event_name = name.strip() or "Untitled Event"
     event_date = start_date or datetime.now().astimezone().date().isoformat()
@@ -51,32 +43,13 @@ def create_event(name: str, start_date: str | None = None) -> Event:
         path=path,
         created_at=datetime.now().astimezone(),
     )
-    _metadata_path(event).write_text(
-        event.model_dump_json(indent=2, exclude={"path"}),
-        encoding="utf-8",
-    )
+    save_event(event)
     return event
 
 
-def _event_from_folder(path: Path) -> Event | None:
-    try:
-        metadata = json.loads((path / METADATA_FILE).read_text(encoding="utf-8"))
-        metadata["path"] = path
-        return Event.model_validate(metadata)
-    except (OSError, json.JSONDecodeError, ValidationError):
-        return None
-
-
 def list_events() -> list[Event]:
-    root = ensure_data_dir()
-    events = []
-    for child in root.iterdir():
-        if not child.is_dir():
-            continue
-        event = _event_from_folder(child)
-        if event is not None:
-            events.append(event)
-    return sorted(events, key=lambda event: event.created_at, reverse=True)
+    ensure_data_dir()
+    return list_event_metadata()
 
 
 def get_event(folder_name: str) -> Event | None:
@@ -86,4 +59,4 @@ def get_event(folder_name: str) -> Event | None:
         return None
     if not candidate.is_dir():
         return None
-    return _event_from_folder(candidate)
+    return get_event_metadata(candidate)

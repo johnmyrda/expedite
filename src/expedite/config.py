@@ -8,11 +8,15 @@ APP_NAME = "Expedite"
 
 FIELDS = ("Name", "Phone", "Work Request", "Cost")
 
-# 4x6 inch label at common 203 DPI thermal-printer resolution.
-LABEL_WIDTH_INCHES = 4
-LABEL_HEIGHT_INCHES = 6
+# Rongta RP332 80mm thermal receipt printer target.
+# Manufacturer specs: 203 DPI / 8 dots per mm, effective print width
+# 72mm or 64mm, 576 or 384 dots per line. Use the wider 72mm mode for
+# generated receipt-label images; output remains PNG until printer dispatch is
+# implemented and verified with hardware.
+PRINTER_MODEL = "Rongta RP332"
 LABEL_DPI = 203
-LABEL_SIZE_PX = (LABEL_WIDTH_INCHES * LABEL_DPI, LABEL_HEIGHT_INCHES * LABEL_DPI)
+LABEL_PRINTABLE_WIDTH_MM = 72
+LABEL_WIDTH_PX = 576
 
 
 def _documents_dir() -> Path | None:

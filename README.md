@@ -1,6 +1,6 @@
 # Expedite
 
-Desktop app for event order intake, CSV export, and 4x6 label image generation.
+Desktop app for event order intake, SQLite-backed storage, and thermal receipt-label image generation.
 
 ## Development
 
@@ -40,6 +40,6 @@ The Windows output is written to `dist/Expedite.exe`.
 - Fixed fields: Name, Phone, Work Request, Cost
 - Non-blocking validation warnings
 - Sequential per-event order IDs
-- Appends each order to `orders.csv`
-- Saves 4x6 PNG labels under each event's `labels/` folder
+- Stores event and order data in the application SQLite database
+- Saves Rongta RP332-targeted thermal receipt-label PNGs under each event's `labels/` folder
 - No in-app printing or automated cross-platform build workflow

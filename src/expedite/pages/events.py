@@ -17,12 +17,14 @@ def register_events_page() -> None:
 
         with ui.column().classes("w-full max-w-3xl mx-auto p-6 gap-6"):
             app_data_dir = data_dir()
-            with ui.row().classes("items-center gap-2"):
-                ui.label(APP_NAME).classes("text-3xl font-bold")
-                ui.button(
-                    icon="folder_open",
-                    on_click=lambda: open_local_path(app_data_dir),
-                ).props("flat round dense").classes("text-primary").tooltip(str(app_data_dir))
+            with ui.row().classes("w-full items-center justify-between"):
+                with ui.row().classes("items-center gap-2"):
+                    ui.label(APP_NAME).classes("text-3xl font-bold")
+                    ui.button(
+                        icon="folder_open",
+                        on_click=lambda: open_local_path(app_data_dir),
+                    ).props("flat round dense").classes("text-primary").tooltip(str(app_data_dir))
+                ui.button("Catalog", on_click=lambda: ui.navigate.to("/catalog")).props("flat")
 
             with ui.card().classes("w-full"):
                 ui.label("Create New Event").classes("text-xl font-semibold")
@@ -51,13 +53,16 @@ def register_events_page() -> None:
                     for event in events:
                         with ui.row().classes("w-full items-center justify-between border-b py-2"):
                             with ui.column().classes("gap-0"):
-                                ui.label(event.name).classes("font-medium")
+                                ui.link(
+                                    event.name,
+                                    f"/events/{event.folder_name()}/manage",
+                                ).classes("font-medium text-primary no-underline")
                                 ui.label(f"{event.start_date} · {event.folder_name()}").classes(
                                     "text-sm text-gray-500"
                                 )
                             with ui.row().classes("gap-2"):
                                 ui.button(
-                                    "Open",
+                                    "Intake",
                                     on_click=lambda e=event: ui.navigate.to(
                                         f"/events/{e.folder_name()}"
                                     ),

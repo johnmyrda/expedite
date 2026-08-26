@@ -1,7 +1,7 @@
 [project]
 name = "expedite"
 version = "0.1.0"
-description = "Desktop app for event order intake, CSV export, and 4x6 label image generation"
+description = "Desktop app for event order intake, SQLite-backed storage, and thermal receipt-label image generation"
 readme = "README.md"
 authors = [
     { name = "John Myrda", email = "hello@johnmyrda.com" }
@@ -12,6 +12,7 @@ dependencies = [
     "phonenumbers>=9.0.37",
     "pillow>=12.3.0",
     "pydantic>=2.13.4",
+    "sqlmodel>=0.0.39",
 ]
 
 [project.scripts]

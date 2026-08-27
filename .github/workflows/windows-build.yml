@@ -1,8 +1,18 @@
-name: Build Windows
+name: Build and release Windows
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, for example v0.1.0
+        required: true
+        type: string
   workflow_call:
+    inputs:
+      tag:
+        description: Release tag, for example v0.1.0
+        required: true
+        type: string
     outputs:
       artifact-id:
         description: GitHub artifact ID for the Windows build
@@ -13,12 +23,15 @@ on:
       artifact-digest:
         description: SHA-256 digest for the Windows build artifact
         value: ${{ jobs.build-windows.outputs.artifact-digest }}
+      release-url:
+        description: URL for the created GitHub release
+        value: ${{ jobs.build-windows.outputs.release-url }}
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: windows-build-${{ github.workflow }}-${{ github.ref }}
+  group: windows-release-${{ inputs.tag }}
   cancel-in-progress: true
 
 jobs:
@@ -30,6 +43,7 @@ jobs:
       artifact-id: ${{ steps.upload.outputs.artifact-id }}
       artifact-url: ${{ steps.upload.outputs.artifact-url }}
       artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+      release-url: ${{ steps.release.outputs.release-url }}
 
     steps:
       - name: Check out repository
@@ -70,6 +84,19 @@ jobs:
             Measure-Object -Property Length -Sum |
             Select-Object Count, Sum
 
+      - name: Package release archive
+        id: package
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          if ($env:RELEASE_TAG -notmatch '^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
+            throw "Release tag must use a version such as v0.1.0 or v0.1.0-rc.1."
+          }
+          $archive = "dist/Expedite-$($env:RELEASE_TAG)-windows.zip"
+          Compress-Archive -Path "dist/Expedite" -DestinationPath $archive
+          "archive=$archive" >> $env:GITHUB_OUTPUT
+
       - name: Upload Windows application
         id: upload
         uses: actions/upload-artifact@v7
@@ -78,3 +105,21 @@ jobs:
           path: dist/Expedite/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Create GitHub release
+        id: release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_ARCHIVE: ${{ steps.package.outputs.archive }}
+        run: |
+          gh release create $env:RELEASE_TAG $env:RELEASE_ARCHIVE `
+            --target $env:GITHUB_SHA `
+            --title "Expedite $env:RELEASE_TAG" `
+            --generate-notes
+          if ($LASTEXITCODE -ne 0) {
+            throw "GitHub release creation failed."
+          }
+          $url = gh release view $env:RELEASE_TAG --json url --jq .url
+          "release-url=$url" >> $env:GITHUB_OUTPUT

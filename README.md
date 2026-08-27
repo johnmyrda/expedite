@@ -51,25 +51,36 @@ uv run pyinstaller --noconfirm --clean --workpath build/pyinstaller --distpath d
 
 ### Building Windows on GitHub Actions
 
-The `Build Windows` workflow uses a GitHub-hosted Windows runner, executes all quality
-checks, creates the onedir application, and uploads it as the `expedite-windows` artifact.
+The `Build and release Windows` workflow uses a GitHub-hosted Windows runner, executes all
+quality checks, creates the onedir application, and publishes a GitHub release with the complete
+installation attached as `Expedite-<tag>-windows.zip`. It also uploads the unpacked build as the
+14-day `expedite-windows` workflow artifact.
 
-To create a build manually:
+To create a release manually:
 
 1. Open the repository's **Actions** tab on GitHub.
-2. Select **Build Windows**.
-3. Choose **Run workflow**.
-4. Download `expedite-windows` from the completed run's **Artifacts** section.
+2. Select **Build and release Windows**.
+3. Choose **Run workflow** and enter a new tag such as `v0.1.0`.
+4. Download the ZIP from the resulting repository **Release**.
 
-After downloading, keep all artifact files together and launch `Expedite.exe`.
+The tag must match `vMAJOR.MINOR.PATCH`, optionally followed by a suffix such as `-rc.1`. The
+workflow creates the tag at the selected commit, generates release notes, and fails rather than
+replacing an existing release.
 
-The workflow also supports `workflow_call`, so a future CI or release workflow can reuse it
-as a job:
+After extracting the ZIP, keep the complete `Expedite` directory together and launch
+`Expedite.exe`.
+
+The workflow also supports `workflow_call`, so future CI can reuse it as a job. The calling
+workflow must grant write access to repository contents:
 
 ```yaml
 jobs:
-  windows-build:
+  windows-release:
+    permissions:
+      contents: write
     uses: ./.github/workflows/windows-build.yml
+    with:
+      tag: v0.1.0
 ```
 
 ## v1 Scope

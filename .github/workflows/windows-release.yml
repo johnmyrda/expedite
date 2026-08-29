@@ -7,16 +7,6 @@ on:
         description: Release tag, for example v0.1.0
         required: true
         type: string
-  workflow_call:
-    inputs:
-      tag:
-        description: Release tag, for example v0.1.0
-        required: true
-        type: string
-    outputs:
-      release-url:
-        description: URL for the created GitHub release
-        value: ${{ jobs.release.outputs.release-url }}
 
 permissions:
   contents: write

@@ -73,8 +73,9 @@ creates the onedir application and Inno Setup installer, and uploads both as 14-
 - `expedite-windows-installer`: the user-facing per-user installer
 - `expedite-windows`: the unpacked diagnostic build
 
-It requires no release tag and can be run freely for CI and testing. Its optional `version` input
-defaults to the project version in `pyproject.toml`.
+It runs automatically whenever a pull request is opened or updated. It requires no release tag
+and can also be run manually or reused by future CI workflows. Its optional manual/reusable
+`version` input defaults to the project version in `pyproject.toml`.
 
 To create a test build manually:
 
@@ -89,8 +90,8 @@ requests its home page, and requires pywebview to emit the native window's `show
 uninstalls the test copy. Smoke-test logs are uploaded as the `expedite-windows-diagnostics`
 artifact, including when the test fails.
 
-The separate `Release Windows` workflow requires a tag, calls the same build and smoke-test
-workflow, and only publishes a release when they pass. To create a release, select
+The separate `Release Windows` workflow remains manual. It requires a tag, calls the same build and
+smoke-test workflow, and only publishes a release when they pass. To create a release, select
 **Release Windows**, enter a new tag such as `v0.1.0`, and run the workflow. The resulting release
 contains `Expedite-<version>-Windows-Setup.exe`.
 
@@ -123,7 +124,8 @@ The same mode can be added to a Windows shortcut by setting its target to:
 
 If normal startup fails, run the diagnostic launcher and share the displayed error and log file.
 
-Both workflows support `workflow_call`. Future CI can request a build without release permissions:
+The build workflow supports `workflow_call`, so future CI can request a build without release
+permissions:
 
 ```yaml
 jobs:
@@ -131,17 +133,7 @@ jobs:
     uses: ./.github/workflows/windows-build.yml
 ```
 
-A release caller supplies a tag and grants write access to repository contents:
-
-```yaml
-jobs:
-  windows-release:
-    permissions:
-      contents: write
-    uses: ./.github/workflows/windows-release.yml
-    with:
-      tag: v0.1.0
-```
+The release workflow intentionally supports manual dispatch only.
 
 ## v1 Scope
 

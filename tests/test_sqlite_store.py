@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from expedite.models import Event, Order, OrderLine, OrderLineRecord
 from expedite.storage.database import engine
+from expedite.storage.events import get_event, list_events
 from expedite.storage.sqlite_store import (
     _order_line_record,
     app_db_path,
@@ -50,6 +51,25 @@ def test_event_metadata_is_saved_to_sqlite(tmp_path: Path) -> None:
 
     assert loaded_event == event
     assert not (event.path / "event.json").exists()
+
+
+def test_event_folders_are_recreated_from_database_metadata(tmp_path: Path) -> None:
+    event = _event(tmp_path)
+    save_event(event)
+    event.path.rmdir()
+
+    loaded_event = get_event(event.folder_name())
+
+    assert loaded_event == event
+    assert event.path.is_dir()
+    assert (event.path / "labels").is_dir()
+
+    (event.path / "labels").rmdir()
+    event.path.rmdir()
+
+    assert list_events() == [event]
+    assert event.path.is_dir()
+    assert (event.path / "labels").is_dir()
 
 
 def test_schema_uses_event_ids_indexes_and_order_foreign_key(tmp_path: Path) -> None:

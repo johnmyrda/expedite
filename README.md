@@ -17,6 +17,12 @@ Event data defaults to the user's Documents folder when available. Override with
 EVENT_INTAKE_DATA_DIR=/path/to/events uv run expedite
 ```
 
+The application database is `expedite.sqlite3` in that directory. Copying this file is sufficient
+to restore events, catalog data, pricing, orders, and order lines on another machine. Expedite
+recreates missing event folders and their `labels/` subdirectories from database metadata when
+events are listed or opened. Previously generated CSV and PNG files remain separate filesystem
+artifacts.
+
 ## Packaging
 
 PyInstaller can reuse the analysis and package caches under `build/pyinstaller`. For fast
@@ -34,9 +40,19 @@ Use the equivalent incremental command on Windows:
 uv run pyinstaller --noconfirm --workpath build/pyinstaller --distpath dist build/expedite-windows.spec
 ```
 
-The Windows onedir build is written to `dist/Expedite/`. Launch
-`dist/Expedite/Expedite.exe`, and keep the complete directory together when installing or
-copying the application.
+The Windows onedir build is written to `dist/Expedite/`. It is the input to the Inno Setup
+installer and remains available as a diagnostic artifact. After building it, create a per-user
+installer with Inno Setup 6:
+
+```powershell
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+  "/DAppVersion=0.1.0" `
+  "build/windows/expedite.iss"
+```
+
+The installer is written to `dist/installer/Expedite-0.1.0-Windows-Setup.exe`. It installs under
+`%LOCALAPPDATA%\Programs\Expedite`, creates a Start Menu shortcut, offers an optional desktop
+shortcut, and requires no administrator access.
 
 Run a clean build before producing a release, or after changing Python, dependencies,
 PyInstaller hooks, or the spec file:
@@ -51,37 +67,73 @@ uv run pyinstaller --noconfirm --clean --workpath build/pyinstaller --distpath d
 
 ### Building Windows on GitHub Actions
 
-The `Build and release Windows` workflow uses a GitHub-hosted Windows runner, executes all
-quality checks, creates the onedir application, and publishes a GitHub release with the complete
-installation attached as `Expedite-<tag>-windows.zip`. It also uploads the unpacked build as the
-14-day `expedite-windows` workflow artifact.
+The `Build Windows` workflow uses a GitHub-hosted Windows runner, executes all quality checks,
+creates the onedir application and Inno Setup installer, and uploads both as 14-day artifacts:
 
-To create a release manually:
+- `expedite-windows-installer`: the user-facing per-user installer
+- `expedite-windows`: the unpacked diagnostic build
+
+It runs automatically whenever a pull request is opened or updated. It requires no release tag
+and can also be run manually or reused by future CI workflows. Its optional manual/reusable
+`version` input defaults to the project version in `pyproject.toml`.
+
+To create a test build manually:
 
 1. Open the repository's **Actions** tab on GitHub.
-2. Select **Build and release Windows**.
-3. Choose **Run workflow** and enter a new tag such as `v0.1.0`.
-4. Download the ZIP from the resulting repository **Release**.
+2. Select **Build Windows**.
+3. Choose **Run workflow**.
+4. Download `expedite-windows-installer` from the completed run's **Artifacts** section.
+
+The build workflow verifies that every pythonnet runtime dependency was packaged, silently installs
+the generated installer into a temporary per-user directory, launches that installed executable,
+requests its home page, and requires pywebview to emit the native window's `shown` event. It then
+uninstalls the test copy. Smoke-test logs are uploaded as the `expedite-windows-diagnostics`
+artifact, including when the test fails.
+
+The separate `Release Windows` workflow remains manual. It requires a tag, calls the same build and
+smoke-test workflow, and only publishes a release when they pass. To create a release, select
+**Release Windows**, enter a new tag such as `v0.1.0`, and run the workflow. The resulting release
+contains `Expedite-<version>-Windows-Setup.exe`.
 
 The tag must match `vMAJOR.MINOR.PATCH`, optionally followed by a suffix such as `-rc.1`. The
 workflow creates the tag at the selected commit, generates release notes, and fails rather than
 replacing an existing release.
 
-After extracting the ZIP, keep the complete `Expedite` directory together and launch
-`Expedite.exe`.
+Download and run the installer, then launch Expedite from the Start Menu. Because the installer
+writes the application payload itself, its managed DLLs do not inherit the downloaded file's
+Internet-origin marker. The unsigned installer may still trigger a one-time Windows SmartScreen
+warning until release signing is added.
 
-The workflow also supports `workflow_call`, so future CI can reuse it as a job. The calling
-workflow must grant write access to repository contents:
+#### Windows diagnostics
+
+Every Windows build includes `Run Expedite.cmd` and `Run Expedite Diagnostics.cmd`. Both remove
+Windows' Internet-origin marker from the extracted application files before launching. The
+diagnostic launcher then starts the same production executable with diagnostic mode enabled; there
+is no separate build whose behavior could differ. Diagnostic mode attaches or creates a console
+and records startup output and uncaught tracebacks at:
+
+```text
+%LOCALAPPDATA%\Expedite\logs\expedite-diagnostic.log
+```
+
+The same mode can be added to a Windows shortcut by setting its target to:
+
+```text
+"C:\path\to\Expedite\Expedite.exe" --diagnostic
+```
+
+If normal startup fails, run the diagnostic launcher and share the displayed error and log file.
+
+The build workflow supports `workflow_call`, so future CI can request a build without release
+permissions:
 
 ```yaml
 jobs:
-  windows-release:
-    permissions:
-      contents: write
+  windows-build:
     uses: ./.github/workflows/windows-build.yml
-    with:
-      tag: v0.1.0
 ```
+
+The release workflow intentionally supports manual dispatch only.
 
 ## v1 Scope
 

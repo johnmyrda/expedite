@@ -47,9 +47,15 @@ def create_event(name: str, start_date: str | None = None) -> Event:
     return event
 
 
+def _ensure_event_folder(event: Event) -> Event:
+    """Recreate derived event directories after a database-only restore."""
+    (event.path / "labels").mkdir(parents=True, exist_ok=True)
+    return event
+
+
 def list_events() -> list[Event]:
     ensure_data_dir()
-    return list_event_metadata()
+    return [_ensure_event_folder(event) for event in list_event_metadata()]
 
 
 def get_event(folder_name: str) -> Event | None:
@@ -57,6 +63,5 @@ def get_event(folder_name: str) -> Event | None:
     candidate = (root / folder_name).resolve()
     if root not in candidate.parents and candidate != root:
         return None
-    if not candidate.is_dir():
-        return None
-    return get_event_metadata(candidate)
+    event = get_event_metadata(candidate)
+    return _ensure_event_folder(event) if event is not None else None

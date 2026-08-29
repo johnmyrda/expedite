@@ -1,0 +1,69 @@
+name: Release Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-release-${{ inputs.tag }}
+  cancel-in-progress: true
+
+jobs:
+  validate-tag:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate semantic version tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must use a version such as v0.1.0 or v0.1.0-rc.1." >&2
+            exit 1
+          fi
+
+  build:
+    name: Build and test Windows app
+    needs: validate-tag
+    uses: ./.github/workflows/windows-build.yml
+    with:
+      version: ${{ inputs.tag }}
+
+  release:
+    name: Create GitHub release
+    needs: [validate-tag, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      release-url: ${{ steps.release.outputs.release-url }}
+
+    steps:
+      - name: Download tested Windows installer
+        uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ needs.build.outputs.installer-artifact-id }}
+          path: dist
+
+      - name: Create GitHub release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_INSTALLER: dist/${{ needs.build.outputs.installer-filename }}
+        run: |
+          gh release create "$RELEASE_TAG" "$RELEASE_INSTALLER" \
+            --target "$GITHUB_SHA" \
+            --title "Expedite $RELEASE_TAG" \
+            --generate-notes
+          url=$(gh release view "$RELEASE_TAG" --json url --jq .url)
+          echo "release-url=$url" >> "$GITHUB_OUTPUT"

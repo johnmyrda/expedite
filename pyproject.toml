@@ -1,6 +1,6 @@
 [project]
 name = "expedite"
-version = "0.1.0"
+version = "0.0.3"
 description = "Desktop app for event order intake, SQLite-backed storage, and thermal receipt-label image generation"
 readme = "README.md"
 authors = [
@@ -9,10 +9,10 @@ authors = [
 requires-python = ">=3.11"
 dependencies = [
     "nicegui[native]>=3.16.0",
-    "phonenumbers>=9.0.37",
+    "phonenumbers==9.0.38",
     "pillow>=12.3.0",
-    "pydantic>=2.13.4",
-    "sqlmodel>=0.0.39",
+    "pydantic==2.13.5",
+    "sqlmodel==0.0.42",
 ]
 
 [project.scripts]
@@ -24,8 +24,8 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "pyinstaller>=6.22.0",
+    "pyinstaller==6.22.2",
     "pytest>=9.1.1",
-    "ruff>=0.16.2",
-    "ty>=0.0.69",
+    "ruff==0.16.5",
+    "ty==0.0.75",
 ]

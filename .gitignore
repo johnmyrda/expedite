@@ -17,4 +17,5 @@ build/pyinstaller/
 
 # Local editor and OS files
 .idea/
+.run/
 .DS_Store

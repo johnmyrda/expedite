@@ -70,6 +70,28 @@ replacing an existing release.
 After extracting the ZIP, keep the complete `Expedite` directory together and launch
 `Expedite.exe`.
 
+Before publishing, the workflow launches the packaged executable on Windows, requests its home
+page, and verifies that the NiceGUI native-window process remains alive. Smoke-test logs are
+uploaded as the `expedite-windows-diagnostics` workflow artifact, including when the test fails.
+
+#### Windows diagnostics
+
+Every Windows build includes `Run Expedite Diagnostics.cmd`. It launches the same production
+executable with diagnostic mode enabled; there is no separate build whose behavior could differ.
+Diagnostic mode attaches or creates a console and records startup output and uncaught tracebacks at:
+
+```text
+%LOCALAPPDATA%\Expedite\logs\expedite-diagnostic.log
+```
+
+The same mode can be added to a Windows shortcut by setting its target to:
+
+```text
+"C:\path\to\Expedite\Expedite.exe" --diagnostic
+```
+
+If normal startup fails, run the diagnostic launcher and share the displayed error and log file.
+
 The workflow also supports `workflow_call`, so future CI can reuse it as a job. The calling
 workflow must grant write access to repository contents:
 

@@ -51,28 +51,32 @@ uv run pyinstaller --noconfirm --clean --workpath build/pyinstaller --distpath d
 
 ### Building Windows on GitHub Actions
 
-The `Build and release Windows` workflow uses a GitHub-hosted Windows runner, executes all
-quality checks, creates the onedir application, and publishes a GitHub release with the complete
-installation attached as `Expedite-<tag>-windows.zip`. It also uploads the unpacked build as the
-14-day `expedite-windows` workflow artifact.
+The `Build Windows` workflow uses a GitHub-hosted Windows runner, executes all quality checks,
+creates the onedir application, and uploads the unpacked build as the 14-day
+`expedite-windows` artifact. It requires no release tag and can be run freely for CI and testing.
 
-To create a release manually:
+To create a test build manually:
 
 1. Open the repository's **Actions** tab on GitHub.
-2. Select **Build and release Windows**.
-3. Choose **Run workflow** and enter a new tag such as `v0.1.0`.
-4. Download the ZIP from the resulting repository **Release**.
+2. Select **Build Windows**.
+3. Choose **Run workflow**.
+4. Download `expedite-windows` from the completed run's **Artifacts** section.
+
+The build workflow launches the packaged executable on Windows, requests its home page, and
+verifies that the NiceGUI native-window process remains alive. Smoke-test logs are uploaded as the
+`expedite-windows-diagnostics` artifact, including when the test fails.
+
+The separate `Release Windows` workflow requires a tag, calls the same build and smoke-test
+workflow, and only publishes a release when they pass. To create a release, select
+**Release Windows**, enter a new tag such as `v0.1.0`, and run the workflow. The resulting release
+contains `Expedite-<tag>-windows.zip`.
 
 The tag must match `vMAJOR.MINOR.PATCH`, optionally followed by a suffix such as `-rc.1`. The
 workflow creates the tag at the selected commit, generates release notes, and fails rather than
 replacing an existing release.
 
-After extracting the ZIP, keep the complete `Expedite` directory together and launch
+After extracting either download, keep the complete `Expedite` directory together and launch
 `Expedite.exe`.
-
-Before publishing, the workflow launches the packaged executable on Windows, requests its home
-page, and verifies that the NiceGUI native-window process remains alive. Smoke-test logs are
-uploaded as the `expedite-windows-diagnostics` workflow artifact, including when the test fails.
 
 #### Windows diagnostics
 
@@ -92,15 +96,22 @@ The same mode can be added to a Windows shortcut by setting its target to:
 
 If normal startup fails, run the diagnostic launcher and share the displayed error and log file.
 
-The workflow also supports `workflow_call`, so future CI can reuse it as a job. The calling
-workflow must grant write access to repository contents:
+Both workflows support `workflow_call`. Future CI can request a build without release permissions:
+
+```yaml
+jobs:
+  windows-build:
+    uses: ./.github/workflows/windows-build.yml
+```
+
+A release caller supplies a tag and grants write access to repository contents:
 
 ```yaml
 jobs:
   windows-release:
     permissions:
       contents: write
-    uses: ./.github/workflows/windows-build.yml
+    uses: ./.github/workflows/windows-release.yml
     with:
       tag: v0.1.0
 ```

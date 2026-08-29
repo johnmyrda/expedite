@@ -62,9 +62,10 @@ To create a test build manually:
 3. Choose **Run workflow**.
 4. Download `expedite-windows` from the completed run's **Artifacts** section.
 
-The build workflow launches the packaged executable on Windows, requests its home page, and
-verifies that the NiceGUI native-window process remains alive. Smoke-test logs are uploaded as the
-`expedite-windows-diagnostics` artifact, including when the test fails.
+The build workflow verifies that every pythonnet runtime dependency was packaged, launches the
+packaged executable on Windows, requests its home page, and requires pywebview to emit the native
+window's `shown` event. Smoke-test logs are uploaded as the `expedite-windows-diagnostics` artifact,
+including when the test fails.
 
 The separate `Release Windows` workflow requires a tag, calls the same build and smoke-test
 workflow, and only publishes a release when they pass. To create a release, select

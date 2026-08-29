@@ -73,6 +73,20 @@ jobs:
           if (-not (Test-Path "dist/Expedite/Run Expedite Diagnostics.cmd")) {
             throw "Windows diagnostic launcher was not generated."
           }
+          $sourceRuntime = uv run python -c `
+            "from pathlib import Path; import pythonnet; print(Path(pythonnet.__file__).parent / 'runtime')"
+          $packagedRuntime = "dist/Expedite/_internal/pythonnet/runtime"
+          $missingRuntimeFiles = @()
+          foreach ($sourceFile in Get-ChildItem $sourceRuntime -File) {
+            $packagedFile = Join-Path $packagedRuntime $sourceFile.Name
+            if (-not (Test-Path $packagedFile)) {
+              $missingRuntimeFiles += $sourceFile.Name
+            }
+          }
+          if ($missingRuntimeFiles.Count -gt 0) {
+            throw "Missing pythonnet runtime files: $($missingRuntimeFiles -join ', ')"
+          }
+          Write-Host "Verified all $((Get-ChildItem $sourceRuntime -File).Count) pythonnet runtime files."
           Get-ChildItem "dist/Expedite" -Recurse |
             Measure-Object -Property Length -Sum |
             Select-Object Count, Sum
@@ -93,9 +107,15 @@ jobs:
           New-Item -ItemType Directory -Force -Path $diagnosticDirectory | Out-Null
           $env:EXPEDITE_DIAGNOSTIC_LOG_DIR = $diagnosticDirectory
           $env:EVENT_INTAKE_DATA_DIR = Join-Path $env:RUNNER_TEMP "ExpediteSmokeData"
+          $windowMarker = Join-Path $diagnosticDirectory "native-window-shown"
+          Remove-Item $windowMarker -ErrorAction SilentlyContinue
           $process = Start-Process `
             -FilePath "dist/Expedite/Expedite.exe" `
-            -ArgumentList @("--diagnostic", "--port", "8765") `
+            -ArgumentList @(
+              "--diagnostic",
+              "--port", "8765",
+              "--smoke-test-marker", $windowMarker
+            ) `
             -PassThru
           try {
             $ready = $false
@@ -121,14 +141,24 @@ jobs:
               throw "Packaged application did not serve its home page within 60 seconds."
             }
 
-            # NiceGUI starts its native WebView in a child process. Keep the app alive
-            # briefly so a failed WebView startup also terminates and fails this test.
-            Start-Sleep -Seconds 5
-            $process.Refresh()
-            if ($process.HasExited) {
-              throw "Native window process failed after server startup (exit code $($process.ExitCode))."
+            # The HTTP server can be healthy even when pywebview fails. Require the
+            # event emitted only after the native Windows window is actually shown.
+            $windowShown = $false
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              $process.Refresh()
+              if ($process.HasExited) {
+                throw "Native window process failed after server startup (exit code $($process.ExitCode))."
+              }
+              if (Test-Path $windowMarker) {
+                $windowShown = $true
+                break
+              }
+              Start-Sleep -Seconds 1
             }
-            Write-Host "Packaged application and native window remained healthy."
+            if (-not $windowShown) {
+              throw "Native window did not emit its shown event within 30 seconds."
+            }
+            Write-Host "Packaged HTTP server and native window are healthy."
           } finally {
             if (-not $process.HasExited) {
               & taskkill.exe /PID $process.Id /T /F 2>$null | Out-Null

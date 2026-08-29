@@ -10,6 +10,13 @@ project_root = Path(SPECPATH).parent
 
 nicegui_datas = collect_data_files("nicegui")
 webview_datas = collect_data_files("webview")
+# The PyInstaller pythonnet hook only collects Python.Runtime.dll. Pythonnet 3.1
+# also requires the managed assemblies and dependency metadata beside that DLL.
+pythonnet_runtime_datas = collect_data_files(
+    "pythonnet",
+    subdir="runtime",
+    excludes=["**/Python.Runtime.dll"],
+)
 
 nicegui_hidden_imports = collect_submodules(
     "nicegui",
@@ -24,7 +31,7 @@ a = Analysis(
     [str(project_root / "src" / "expedite" / "main.py")],
     pathex=[str(project_root / "src")],
     binaries=[],
-    datas=nicegui_datas + webview_datas,
+    datas=nicegui_datas + webview_datas + pythonnet_runtime_datas,
     hiddenimports=nicegui_hidden_imports + webview_hidden_imports,
     hookspath=[],
     hooksconfig={},

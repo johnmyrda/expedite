@@ -3,8 +3,9 @@
 import argparse
 import logging
 import os
+from pathlib import Path
 
-from nicegui import ui
+from nicegui import app, ui
 
 from expedite.config import APP_NAME
 from expedite.diagnostics import configure_diagnostics, log_unhandled_exception
@@ -24,11 +25,20 @@ def _parse_args() -> argparse.Namespace:
         help="show a diagnostic console and write a persistent startup log",
     )
     parser.add_argument("--port", type=int, help=argparse.SUPPRESS)
+    parser.add_argument("--smoke-test-marker", type=Path, help=argparse.SUPPRESS)
     args, _ = parser.parse_known_args()
     return args
 
 
-def _run(*, port: int | None) -> None:
+def _run(*, port: int | None, smoke_test_marker: Path | None) -> None:
+    if smoke_test_marker is not None:
+        def mark_native_window_shown() -> None:
+            smoke_test_marker.parent.mkdir(parents=True, exist_ok=True)
+            smoke_test_marker.write_text("shown\n", encoding="utf-8")
+            logging.info("Native window shown; wrote smoke-test marker %s", smoke_test_marker)
+
+        app.native.on("shown", mark_native_window_shown)
+
     ensure_data_dir()
     register_catalog_page()
     register_event_details_page()
@@ -46,7 +56,7 @@ def main() -> None:
         configure_diagnostics()
 
     try:
-        _run(port=args.port)
+        _run(port=args.port, smoke_test_marker=args.smoke_test_marker)
     except Exception:
         if diagnostic:
             log_unhandled_exception()

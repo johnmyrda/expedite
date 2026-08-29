@@ -45,6 +45,8 @@ jobs:
     name: Build and test Windows app
     needs: validate-tag
     uses: ./.github/workflows/windows-build.yml
+    with:
+      version: ${{ inputs.tag }}
 
   release:
     name: Create GitHub release
@@ -55,21 +57,11 @@ jobs:
       release-url: ${{ steps.release.outputs.release-url }}
 
     steps:
-      - name: Download tested Windows application
+      - name: Download tested Windows installer
         uses: actions/download-artifact@v8
         with:
-          artifact-ids: ${{ needs.build.outputs.artifact-id }}
-          path: dist/Expedite
-
-      - name: Package release archive
-        id: package
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ inputs.tag }}
-        run: |
-          archive="Expedite-${RELEASE_TAG}-windows.zip"
-          (cd dist && zip -r "$archive" Expedite)
-          echo "archive=dist/$archive" >> "$GITHUB_OUTPUT"
+          artifact-ids: ${{ needs.build.outputs.installer-artifact-id }}
+          path: dist
 
       - name: Create GitHub release
         id: release
@@ -77,9 +69,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
-          RELEASE_ARCHIVE: ${{ steps.package.outputs.archive }}
+          RELEASE_INSTALLER: dist/${{ needs.build.outputs.installer-filename }}
         run: |
-          gh release create "$RELEASE_TAG" "$RELEASE_ARCHIVE" \
+          gh release create "$RELEASE_TAG" "$RELEASE_INSTALLER" \
             --target "$GITHUB_SHA" \
             --title "Expedite $RELEASE_TAG" \
             --generate-notes

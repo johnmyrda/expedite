@@ -34,9 +34,19 @@ Use the equivalent incremental command on Windows:
 uv run pyinstaller --noconfirm --workpath build/pyinstaller --distpath dist build/expedite-windows.spec
 ```
 
-The Windows onedir build is written to `dist/Expedite/`. Launch
-`dist/Expedite/Expedite.exe`, and keep the complete directory together when installing or
-copying the application.
+The Windows onedir build is written to `dist/Expedite/`. It is the input to the Inno Setup
+installer and remains available as a diagnostic artifact. After building it, create a per-user
+installer with Inno Setup 6:
+
+```powershell
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+  "/DAppVersion=0.1.0" `
+  "build/windows/expedite.iss"
+```
+
+The installer is written to `dist/installer/Expedite-0.1.0-Windows-Setup.exe`. It installs under
+`%LOCALAPPDATA%\Programs\Expedite`, creates a Start Menu shortcut, offers an optional desktop
+shortcut, and requires no administrator access.
 
 Run a clean build before producing a release, or after changing Python, dependencies,
 PyInstaller hooks, or the spec file:
@@ -52,38 +62,48 @@ uv run pyinstaller --noconfirm --clean --workpath build/pyinstaller --distpath d
 ### Building Windows on GitHub Actions
 
 The `Build Windows` workflow uses a GitHub-hosted Windows runner, executes all quality checks,
-creates the onedir application, and uploads the unpacked build as the 14-day
-`expedite-windows` artifact. It requires no release tag and can be run freely for CI and testing.
+creates the onedir application and Inno Setup installer, and uploads both as 14-day artifacts:
+
+- `expedite-windows-installer`: the user-facing per-user installer
+- `expedite-windows`: the unpacked diagnostic build
+
+It requires no release tag and can be run freely for CI and testing. Its optional `version` input
+defaults to the project version in `pyproject.toml`.
 
 To create a test build manually:
 
 1. Open the repository's **Actions** tab on GitHub.
 2. Select **Build Windows**.
 3. Choose **Run workflow**.
-4. Download `expedite-windows` from the completed run's **Artifacts** section.
+4. Download `expedite-windows-installer` from the completed run's **Artifacts** section.
 
-The build workflow verifies that every pythonnet runtime dependency was packaged, launches the
-packaged executable on Windows, requests its home page, and requires pywebview to emit the native
-window's `shown` event. Smoke-test logs are uploaded as the `expedite-windows-diagnostics` artifact,
-including when the test fails.
+The build workflow verifies that every pythonnet runtime dependency was packaged, silently installs
+the generated installer into a temporary per-user directory, launches that installed executable,
+requests its home page, and requires pywebview to emit the native window's `shown` event. It then
+uninstalls the test copy. Smoke-test logs are uploaded as the `expedite-windows-diagnostics`
+artifact, including when the test fails.
 
 The separate `Release Windows` workflow requires a tag, calls the same build and smoke-test
 workflow, and only publishes a release when they pass. To create a release, select
 **Release Windows**, enter a new tag such as `v0.1.0`, and run the workflow. The resulting release
-contains `Expedite-<tag>-windows.zip`.
+contains `Expedite-<version>-Windows-Setup.exe`.
 
 The tag must match `vMAJOR.MINOR.PATCH`, optionally followed by a suffix such as `-rc.1`. The
 workflow creates the tag at the selected commit, generates release notes, and fails rather than
 replacing an existing release.
 
-After extracting either download, keep the complete `Expedite` directory together and launch
-`Expedite.exe`.
+Download and run the installer, then launch Expedite from the Start Menu. Because the installer
+writes the application payload itself, its managed DLLs do not inherit the downloaded file's
+Internet-origin marker. The unsigned installer may still trigger a one-time Windows SmartScreen
+warning until release signing is added.
 
 #### Windows diagnostics
 
-Every Windows build includes `Run Expedite Diagnostics.cmd`. It launches the same production
-executable with diagnostic mode enabled; there is no separate build whose behavior could differ.
-Diagnostic mode attaches or creates a console and records startup output and uncaught tracebacks at:
+Every Windows build includes `Run Expedite.cmd` and `Run Expedite Diagnostics.cmd`. Both remove
+Windows' Internet-origin marker from the extracted application files before launching. The
+diagnostic launcher then starts the same production executable with diagnostic mode enabled; there
+is no separate build whose behavior could differ. Diagnostic mode attaches or creates a console
+and records startup output and uncaught tracebacks at:
 
 ```text
 %LOCALAPPDATA%\Expedite\logs\expedite-diagnostic.log

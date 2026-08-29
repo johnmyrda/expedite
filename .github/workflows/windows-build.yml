@@ -2,7 +2,18 @@ name: Build Windows
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Optional installer version; defaults to pyproject.toml
+        required: false
+        type: string
   workflow_call:
+    inputs:
+      version:
+        description: Optional installer version; defaults to pyproject.toml
+        required: false
+        type: string
+        default: ""
     outputs:
       artifact-id:
         description: GitHub artifact ID for the Windows build
@@ -11,8 +22,20 @@ on:
         description: URL for the Windows build artifact
         value: ${{ jobs.build-windows.outputs.artifact-url }}
       artifact-digest:
-        description: SHA-256 digest for the Windows build artifact
+        description: SHA-256 digest for the Windows onedir artifact
         value: ${{ jobs.build-windows.outputs.artifact-digest }}
+      installer-artifact-id:
+        description: GitHub artifact ID for the Windows installer
+        value: ${{ jobs.build-windows.outputs.installer-artifact-id }}
+      installer-artifact-url:
+        description: URL for the Windows installer artifact
+        value: ${{ jobs.build-windows.outputs.installer-artifact-url }}
+      installer-artifact-digest:
+        description: SHA-256 digest for the Windows installer artifact
+        value: ${{ jobs.build-windows.outputs.installer-artifact-digest }}
+      installer-filename:
+        description: Filename of the Windows installer
+        value: ${{ jobs.build-windows.outputs.installer-filename }}
 
 permissions:
   contents: read
@@ -30,6 +53,10 @@ jobs:
       artifact-id: ${{ steps.upload.outputs.artifact-id }}
       artifact-url: ${{ steps.upload.outputs.artifact-url }}
       artifact-digest: ${{ steps.upload.outputs.artifact-digest }}
+      installer-artifact-id: ${{ steps.upload-installer.outputs.artifact-id }}
+      installer-artifact-url: ${{ steps.upload-installer.outputs.artifact-url }}
+      installer-artifact-digest: ${{ steps.upload-installer.outputs.artifact-digest }}
+      installer-filename: ${{ steps.version.outputs.installer-filename }}
 
     steps:
       - name: Check out repository
@@ -44,6 +71,25 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked
+
+      - name: Determine installer version
+        id: version
+        shell: pwsh
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          [string] $version = $env:REQUESTED_VERSION
+          $version = $version.Trim()
+          if (-not $version) {
+            $version = uv run python -c `
+              "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])"
+          }
+          $version = $version.TrimStart("v")
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
+            throw "Installer version must use a value such as 0.1.0 or 0.1.0-rc.1."
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "installer-filename=Expedite-$version-Windows-Setup.exe" >> $env:GITHUB_OUTPUT
 
       - name: Run quality checks
         run: |
@@ -60,9 +106,9 @@ jobs:
           --distpath dist
           build/expedite-windows.spec
 
-      - name: Add diagnostic launcher
+      - name: Add Windows launchers
         shell: pwsh
-        run: Copy-Item "build/Run Expedite Diagnostics.cmd" "dist/Expedite/"
+        run: Copy-Item "build/Run Expedite*.cmd" "dist/Expedite/"
 
       - name: Verify build output
         shell: pwsh
@@ -70,8 +116,10 @@ jobs:
           if (-not (Test-Path "dist/Expedite/Expedite.exe")) {
             throw "Windows executable was not generated."
           }
-          if (-not (Test-Path "dist/Expedite/Run Expedite Diagnostics.cmd")) {
-            throw "Windows diagnostic launcher was not generated."
+          foreach ($launcher in @("Run Expedite.cmd", "Run Expedite Diagnostics.cmd")) {
+            if (-not (Test-Path (Join-Path "dist/Expedite" $launcher))) {
+              throw "Windows launcher was not generated: $launcher"
+            }
           }
           $sourceRuntime = uv run python -c `
             "from pathlib import Path; import pythonnet; print(Path(pythonnet.__file__).parent / 'runtime')"
@@ -100,7 +148,74 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Smoke-test packaged application
+      - name: Build per-user Windows installer
+        shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+          INSTALLER_FILENAME: ${{ steps.version.outputs.installer-filename }}
+        run: |
+          $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) {
+            $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          }
+          if (-not (Test-Path $iscc)) {
+            throw "Inno Setup compiler was not found."
+          }
+          & $iscc "/DAppVersion=$env:APP_VERSION" "build/windows/expedite.iss"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup compilation failed."
+          }
+          $installer = Join-Path "dist/installer" $env:INSTALLER_FILENAME
+          if (-not (Test-Path $installer)) {
+            throw "Windows installer was not generated: $installer"
+          }
+          Get-FileHash $installer -Algorithm SHA256
+
+      - name: Upload Windows installer
+        id: upload-installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: expedite-windows-installer
+          path: dist/installer/${{ steps.version.outputs.installer-filename }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Install application silently for smoke test
+        shell: pwsh
+        env:
+          INSTALLER_FILENAME: ${{ steps.version.outputs.installer-filename }}
+        run: |
+          $installDirectory = Join-Path $env:RUNNER_TEMP "ExpediteInstalled"
+          Remove-Item $installDirectory -Recurse -Force -ErrorAction SilentlyContinue
+          $diagnosticDirectory = Join-Path $env:GITHUB_WORKSPACE "build/diagnostics"
+          New-Item -ItemType Directory -Force -Path $diagnosticDirectory | Out-Null
+          $installLog = Join-Path $diagnosticDirectory "inno-install.log"
+          $installer = Join-Path "dist/installer" $env:INSTALLER_FILENAME
+          $installerProcess = Start-Process `
+            -FilePath $installer `
+            -ArgumentList @(
+              "/VERYSILENT",
+              "/SUPPRESSMSGBOXES",
+              "/NORESTART",
+              "/DIR=$installDirectory",
+              "/LOG=$installLog"
+            ) `
+            -Wait `
+            -PassThru
+          if ($installerProcess.ExitCode -ne 0) {
+            throw "Windows installer exited with code $($installerProcess.ExitCode)."
+          }
+          if (-not (Test-Path (Join-Path $installDirectory "Expedite.exe"))) {
+            throw "Installed Expedite executable was not found."
+          }
+          $runtimeDll = Join-Path $installDirectory "_internal/pythonnet/runtime/Python.Runtime.dll"
+          $zoneIdentifier = Get-Item $runtimeDll -Stream Zone.Identifier -ErrorAction SilentlyContinue
+          if ($zoneIdentifier) {
+            throw "Installed Python.Runtime.dll retained an Internet-origin marker."
+          }
+          "EXPEDITE_TEST_INSTALL_DIR=$installDirectory" >> $env:GITHUB_ENV
+
+      - name: Smoke-test installed application
         shell: pwsh
         run: |
           $diagnosticDirectory = Join-Path $env:GITHUB_WORKSPACE "build/diagnostics"
@@ -109,8 +224,9 @@ jobs:
           $env:EVENT_INTAKE_DATA_DIR = Join-Path $env:RUNNER_TEMP "ExpediteSmokeData"
           $windowMarker = Join-Path $diagnosticDirectory "native-window-shown"
           Remove-Item $windowMarker -ErrorAction SilentlyContinue
+          $installedExecutable = Join-Path $env:EXPEDITE_TEST_INSTALL_DIR "Expedite.exe"
           $process = Start-Process `
-            -FilePath "dist/Expedite/Expedite.exe" `
+            -FilePath $installedExecutable `
             -ArgumentList @(
               "--diagnostic",
               "--port", "8765",
@@ -162,6 +278,17 @@ jobs:
           } finally {
             if (-not $process.HasExited) {
               & taskkill.exe /PID $process.Id /T /F 2>$null | Out-Null
+            }
+            $uninstaller = Join-Path $env:EXPEDITE_TEST_INSTALL_DIR "unins000.exe"
+            if (Test-Path $uninstaller) {
+              $uninstallProcess = Start-Process `
+                -FilePath $uninstaller `
+                -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") `
+                -Wait `
+                -PassThru
+              if ($uninstallProcess.ExitCode -ne 0) {
+                Write-Warning "Uninstaller exited with code $($uninstallProcess.ExitCode)."
+              }
             }
             $logPath = Join-Path $diagnosticDirectory "expedite-diagnostic.log"
             if (Test-Path $logPath) {

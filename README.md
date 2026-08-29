@@ -17,6 +17,12 @@ Event data defaults to the user's Documents folder when available. Override with
 EVENT_INTAKE_DATA_DIR=/path/to/events uv run expedite
 ```
 
+The application database is `expedite.sqlite3` in that directory. Copying this file is sufficient
+to restore events, catalog data, pricing, orders, and order lines on another machine. Expedite
+recreates missing event folders and their `labels/` subdirectories from database metadata when
+events are listed or opened. Previously generated CSV and PNG files remain separate filesystem
+artifacts.
+
 ## Packaging
 
 PyInstaller can reuse the analysis and package caches under `build/pyinstaller`. For fast

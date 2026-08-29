@@ -1,6 +1,6 @@
 [project]
 name = "expedite"
-version = "0.1.0"
+version = "0.0.3"
 description = "Desktop app for event order intake, SQLite-backed storage, and thermal receipt-label image generation"
 readme = "README.md"
 authors = [

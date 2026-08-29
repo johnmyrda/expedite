@@ -19,3 +19,7 @@ build/pyinstaller/
 .idea/
 .run/
 .DS_Store
+
+# Local Files for Context
+DEV_LOG.md
+EVENT_INTAKE.md

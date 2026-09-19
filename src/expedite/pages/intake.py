@@ -2,13 +2,16 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
-from nicegui import events, ui
+from nicegui import events, run, ui
 
+from expedite.config import PRINTER_NAME
 from expedite.label import render_label
 from expedite.local_files import open_local_path
 from expedite.models import Order, OrderLine
 from expedite.money import display_price, parse_price_cents
+from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
     append_order,
@@ -91,6 +94,14 @@ def register_intake_page() -> None:
             line_drafts = [LineDraft()]
 
         ui.page_title(f"{event.name} - Intake")
+
+        async def print_label_image(path: Path) -> None:
+            try:
+                printer_name = await run.io_bound(print_label, path)
+            except PrintError as error:
+                ui.notify(str(error), type="negative", multi_line=True)
+            else:
+                ui.notify(f"Sent label to {printer_name}", type="positive")
 
         with ui.column().classes("w-full max-w-4xl mx-auto p-6 gap-6"):
             with ui.row().classes("w-full items-center justify-between"):
@@ -426,7 +437,7 @@ def register_intake_page() -> None:
                     line_editor.refresh()
                     update_total()
 
-                def handle_submit() -> None:
+                async def handle_submit() -> None:
                     line_items, warnings = collect_line_items()
                     work_request = (
                         "; ".join(
@@ -471,10 +482,17 @@ def register_intake_page() -> None:
                             icon="article",
                             on_click=lambda path=label_path: open_local_path(path),
                         ).props("flat round dense").classes("text-primary").tooltip(str(label_path))
+                        ui.button(
+                            icon="print",
+                            on_click=lambda path=label_path: print_label_image(path),
+                        ).props("flat round dense").classes("text-primary").tooltip(
+                            f"Print on {PRINTER_NAME}"
+                        )
                     ui.notify(
                         f"{'Updated' if existing_order else 'Saved'} order #{saved_order.order_id}",
                         type="positive",
                     )
+                    await print_label_image(label_path)
                     if not existing_order:
                         clear_form()
                         order_title.text = f"Order #{next_order_id(event)}"

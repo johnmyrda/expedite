@@ -11,9 +11,10 @@ FIELDS = ("Name", "Phone", "Work Request", "Cost")
 # Rongta RP332 80mm thermal receipt printer target.
 # Manufacturer specs: 203 DPI / 8 dots per mm, effective print width
 # 72mm or 64mm, 576 or 384 dots per line. Use the wider 72mm mode for
-# generated receipt-label images; output remains PNG until printer dispatch is
-# implemented and verified with hardware.
+# generated receipt-label images. Windows printing converts these PNGs to
+# ESC/POS raster commands for direct spooler dispatch.
 PRINTER_MODEL = "Rongta RP332"
+PRINTER_NAME = os.environ.get("EXPEDITE_PRINTER_NAME", "RONGTA 80mm Series Printer")
 LABEL_DPI = 203
 LABEL_PRINTABLE_WIDTH_MM = 72
 LABEL_WIDTH_PX = 576

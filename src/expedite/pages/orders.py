@@ -1,10 +1,13 @@
 """Order listing page for an event."""
 
 from datetime import datetime
+from pathlib import Path
 
-from nicegui import ui
+from nicegui import run, ui
 
+from expedite.config import PRINTER_NAME
 from expedite.local_files import open_local_path
+from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import export_orders_csv, list_order_records
 
@@ -25,6 +28,14 @@ def register_orders_page() -> None:
 
         ui.page_title(f"{event.name} - Orders")
         orders = list_order_records(event)
+
+        async def print_label_image(path: Path) -> None:
+            try:
+                printer_name = await run.io_bound(print_label, path)
+            except PrintError as error:
+                ui.notify(str(error), type="negative", multi_line=True)
+            else:
+                ui.notify(f"Sent label to {printer_name}", type="positive")
 
         with ui.column().classes("w-full max-w-6xl mx-auto p-6 gap-6"):
             with ui.row().classes("w-full items-center justify-between"):
@@ -69,7 +80,7 @@ def register_orders_page() -> None:
                     ui.label("Phone").classes("w-40")
                     ui.label("Work Request").classes("grow")
                     ui.label("Cost").classes("w-24")
-                    ui.label("Label").classes("w-16")
+                    ui.label("Label").classes("w-24")
 
                 for order in orders:
                     label_filename = order.label_filename or ""
@@ -90,13 +101,19 @@ def register_orders_page() -> None:
                         ui.label(order.phone).classes("w-40")
                         ui.label(order.work_request).classes("grow")
                         ui.label(order.cost).classes("w-24")
-                        with ui.row().classes("w-16"):
+                        with ui.row().classes("w-24 gap-0"):
                             if label_filename:
                                 ui.button(
                                     icon="article",
                                     on_click=lambda path=label_path: open_local_path(path),
                                 ).props("flat round dense").classes("text-primary").tooltip(
                                     str(label_path)
+                                )
+                                ui.button(
+                                    icon="print",
+                                    on_click=lambda path=label_path: print_label_image(path),
+                                ).props("flat round dense").classes("text-primary").tooltip(
+                                    f"Print on {PRINTER_NAME}"
                                 )
                             else:
                                 ui.label("—").classes("text-gray-400")

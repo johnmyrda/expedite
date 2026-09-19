@@ -23,6 +23,12 @@ recreates missing event folders and their `labels/` subdirectories from database
 events are listed or opened. Previously generated CSV and PNG files remain separate filesystem
 artifacts.
 
+## Catalog favorites
+
+Use the star buttons on the Catalog page to favorite up to 10 active items. Favorites appear as
+clickable chips on each event's intake page. Hover over a chip to see the item's description and
+its effective event price; click it to add the item to the order.
+
 ## Printing
 
 On Windows, submitting or updating an order sends its generated label directly to the configured

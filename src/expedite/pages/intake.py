@@ -17,6 +17,7 @@ from expedite.storage.sqlite_store import (
     append_order,
     event_catalog_prices,
     get_order,
+    list_catalog_favorite_ids,
     list_catalog_items,
     next_order_id,
     update_order,
@@ -65,6 +66,12 @@ def register_intake_page() -> None:
         catalog_options.update(
             {item_id: item.name for item_id, item in catalog_by_id.items() if item.active}
         )
+        favorite_ids = set(list_catalog_favorite_ids())
+        favorite_items = [
+            item
+            for item in catalog
+            if item.id in favorite_ids and item.active and item.id is not None
+        ]
 
         if existing_order and existing_order.line_items:
             line_drafts = [
@@ -173,6 +180,55 @@ def register_intake_page() -> None:
 
                 def update_total() -> None:
                     total_label.text = f"Total: {display_price(draft_total_cents())}"
+
+                def add_favorite_item(item_id: int) -> None:
+                    item = catalog_by_id[item_id]
+                    line = next(
+                        (
+                            draft
+                            for draft in line_drafts
+                            if draft.catalog_item_id is None
+                            and not draft.description.strip()
+                            and not draft.unit_price.strip()
+                            and not draft.notes.strip()
+                        ),
+                        None,
+                    )
+                    if line is None:
+                        line = LineDraft()
+                        line_drafts.append(line)
+                    line.catalog_item_id = item_id
+                    line.description = item.name
+                    price_cents = overrides.get(item_id, item.base_price_cents)
+                    line.unit_price = f"{price_cents / 100:.2f}"
+                    line_editor.refresh()
+                    update_total()
+
+                if favorite_items:
+                    ui.label("Favorites").classes("text-sm font-medium text-gray-600")
+                    with ui.row().classes("w-full gap-1 flex-wrap"):
+                        for favorite_item in favorite_items:
+                            favorite_id = favorite_item.id
+                            if favorite_id is None:
+                                continue
+                            favorite_price = overrides.get(
+                                favorite_id, favorite_item.base_price_cents
+                            )
+                            description = favorite_item.description or "No description"
+
+                            def add_selected_favorite(
+                                selected_id: int = favorite_id,
+                            ) -> None:
+                                add_favorite_item(selected_id)
+
+                            alt_text = f"{description} · Cost: {display_price(favorite_price)}"
+                            favorite_chip = ui.chip(
+                                favorite_item.name,
+                                color="primary",
+                                on_click=add_selected_favorite,
+                            ).props("outline square")
+                            favorite_chip.props["aria-label"] = alt_text
+                            favorite_chip.tooltip(alt_text)
 
                 @ui.refreshable
                 def line_editor() -> None:

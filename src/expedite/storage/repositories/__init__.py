@@ -2,6 +2,7 @@
 
 from expedite.storage.repositories.base import Repository
 from expedite.storage.repositories.catalog import (
+    CatalogFavoriteRepository,
     CatalogRepository,
     EventCatalogPriceRepository,
 )
@@ -12,6 +13,7 @@ from expedite.storage.repositories.setting import AppAssetRepository, AppSetting
 __all__ = [
     "AppAssetRepository",
     "AppSettingRepository",
+    "CatalogFavoriteRepository",
     "CatalogRepository",
     "EventCatalogPriceRepository",
     "EventRepository",

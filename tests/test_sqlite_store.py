@@ -16,6 +16,7 @@ from expedite.storage.sqlite_store import (
     event_catalog_prices,
     get_event_metadata,
     get_order,
+    list_catalog_favorite_ids,
     list_catalog_items,
     list_order_records,
     next_order_id,
@@ -23,6 +24,7 @@ from expedite.storage.sqlite_store import (
     save_catalog_item,
     save_event,
     save_event_catalog_price,
+    set_catalog_item_favorite,
     update_order,
 )
 
@@ -120,17 +122,11 @@ def test_schema_uses_event_ids_indexes_and_order_foreign_key(tmp_path: Path) -> 
     } <= order_line_columns.keys()
     assert any("folder_name" in index for index in event_indexes)
     assert any(
-        row[2] == "events"
-        and row[3] == "event_id"
-        and row[4] == "id"
-        and row[6] == "CASCADE"
+        row[2] == "events" and row[3] == "event_id" and row[4] == "id" and row[6] == "CASCADE"
         for row in order_foreign_keys
     )
     assert any(
-        row[2] == "orders"
-        and row[3] == "order_id"
-        and row[4] == "id"
-        and row[6] == "CASCADE"
+        row[2] == "orders" and row[3] == "order_id" and row[4] == "id" and row[6] == "CASCADE"
         for row in order_line_foreign_keys
     )
     assert any(
@@ -182,6 +178,45 @@ def test_catalog_items_can_be_created_and_updated() -> None:
     assert updated.base_price_cents == 3000
     assert not updated.active
     assert len(list_catalog_items()) == 1
+
+
+def test_catalog_favorites_are_limited_and_inactive_items_are_removed() -> None:
+    items = [
+        save_catalog_item(
+            item_id=None,
+            name=f"Favorite {index}",
+            description=f"Common item {index}",
+            base_price_cents=index * 100,
+            active=True,
+        )
+        for index in range(1, 12)
+    ]
+    item_ids = [item.id for item in items]
+    assert all(item_id is not None for item_id in item_ids)
+    favorite_ids = [int(item_id) for item_id in item_ids[:10] if item_id is not None]
+
+    for item_id in favorite_ids:
+        set_catalog_item_favorite(item_id, True)
+    set_catalog_item_favorite(favorite_ids[0], True)
+
+    assert list_catalog_favorite_ids() == favorite_ids
+    eleventh_id = items[10].id
+    assert eleventh_id is not None
+    with pytest.raises(ValueError, match="No more than 10"):
+        set_catalog_item_favorite(eleventh_id, True)
+
+    first = items[0]
+    assert first.id is not None
+    save_catalog_item(
+        item_id=first.id,
+        name=first.name,
+        description=first.description,
+        base_price_cents=first.base_price_cents,
+        active=False,
+    )
+    set_catalog_item_favorite(eleventh_id, True)
+
+    assert list_catalog_favorite_ids() == [*favorite_ids[1:], eleventh_id]
 
 
 def test_event_catalog_prices_can_be_set_and_cleared(tmp_path: Path) -> None:

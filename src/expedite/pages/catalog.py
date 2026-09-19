@@ -5,7 +5,13 @@ from nicegui import events, ui
 from expedite.config import APP_NAME
 from expedite.models import CatalogItem
 from expedite.money import display_price, parse_price_cents
-from expedite.storage.sqlite_store import list_catalog_items, save_catalog_item
+from expedite.storage.sqlite_store import (
+    MAX_CATALOG_FAVORITES,
+    list_catalog_favorite_ids,
+    list_catalog_items,
+    save_catalog_item,
+    set_catalog_item_favorite,
+)
 
 
 def register_catalog_page() -> None:
@@ -49,8 +55,23 @@ def register_catalog_page() -> None:
                     or query in item.name.casefold()
                     or query in (item.description or "").casefold()
                 ]
+                favorite_ids = set(list_catalog_favorite_ids())
 
-                ui.label(f"{len(items)} item(s)").classes("text-sm text-gray-500")
+                ui.label(
+                    f"{len(items)} item(s) · {len(favorite_ids)}/{MAX_CATALOG_FAVORITES} favorites"
+                ).classes("text-sm text-gray-500")
+
+                def toggle_favorite(item: CatalogItem, favorite: bool) -> None:
+                    if item.id is None:
+                        return
+                    try:
+                        set_catalog_item_favorite(item.id, favorite)
+                    except ValueError as error:
+                        ui.notify(str(error), type="negative")
+                    else:
+                        action = "Added to" if favorite else "Removed from"
+                        ui.notify(f"{action} intake favorites: {item.name}", type="positive")
+                        item_list.refresh()
 
                 def cancel_edit() -> None:
                     state["editing_id"] = None
@@ -137,6 +158,26 @@ def register_catalog_page() -> None:
                             ui.label(display_price(item.base_price_cents)).classes(
                                 "font-medium whitespace-nowrap"
                             )
+
+                            is_favorite = item.id in favorite_ids
+
+                            def handle_favorite(
+                                selected: CatalogItem = item,
+                                favorite: bool = not is_favorite,
+                            ) -> None:
+                                toggle_favorite(selected, favorite)
+
+                            favorite_button = ui.button(
+                                icon="star" if is_favorite else "star_border",
+                                on_click=handle_favorite,
+                            ).props("flat round dense color=amber-8")
+                            favorite_button.tooltip(
+                                "Remove from intake favorites"
+                                if is_favorite
+                                else "Show as an intake favorite"
+                            )
+                            if not item.active:
+                                favorite_button.disable()
 
                             def start_edit(selected: CatalogItem = item) -> None:
                                 state["creating"] = False

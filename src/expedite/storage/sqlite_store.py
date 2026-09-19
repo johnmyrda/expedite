@@ -8,6 +8,7 @@ from sqlmodel import Session
 
 from expedite.config import data_dir
 from expedite.models import (
+    CatalogFavorite,
     CatalogItem,
     Event,
     EventCatalogPrice,
@@ -20,6 +21,7 @@ from expedite.models import (
 )
 from expedite.storage.database import app_db_path, open_session, transaction
 from expedite.storage.repositories import (
+    CatalogFavoriteRepository,
     CatalogRepository,
     EventCatalogPriceRepository,
     EventRepository,
@@ -27,6 +29,8 @@ from expedite.storage.repositories import (
 )
 
 ORDERS_CSV_FILENAME = "orders.csv"
+MAX_CATALOG_FAVORITES = 10
+
 ORDER_EXPORT_COLUMNS = (
     "order_number",
     "timestamp",
@@ -99,6 +103,35 @@ def list_catalog_items() -> list[CatalogItem]:
     return sorted(items, key=lambda item: item.name.casefold())
 
 
+def list_catalog_favorite_ids() -> list[int]:
+    with _session() as session:
+        favorites = CatalogFavoriteRepository(session).find_all()
+    return [favorite.catalog_item_id for favorite in favorites]
+
+
+def set_catalog_item_favorite(catalog_item_id: int, favorite: bool) -> None:
+    with transaction() as session:
+        catalog = CatalogRepository(session)
+        favorites = CatalogFavoriteRepository(session)
+        item = catalog.get(catalog_item_id)
+        if item is None:
+            raise ValueError(f"Catalog item {catalog_item_id} does not exist.")
+
+        saved = favorites.get(catalog_item_id)
+        if favorite:
+            if saved is not None:
+                return
+            if not item.active:
+                raise ValueError("Inactive catalog items cannot be favorited.")
+            if len(favorites.find_all()) >= MAX_CATALOG_FAVORITES:
+                raise ValueError(
+                    f"No more than {MAX_CATALOG_FAVORITES} catalog items can be favorited."
+                )
+            favorites.save(CatalogFavorite(catalog_item_id=catalog_item_id))
+        elif saved is not None:
+            favorites.delete(saved)
+
+
 def save_catalog_item(
     *,
     item_id: int | None,
@@ -110,6 +143,7 @@ def save_catalog_item(
     now = datetime.now().astimezone()
     with transaction() as session:
         repository = CatalogRepository(session)
+        favorites = CatalogFavoriteRepository(session)
         item = repository.get(item_id) if item_id is not None else None
         if item_id is not None and item is None:
             raise ValueError(f"Catalog item {item_id} does not exist.")
@@ -129,6 +163,10 @@ def save_catalog_item(
             item.active = active
             item.updated_at = now
         repository.save(item)
+        if not item.active and item.id is not None:
+            favorite = favorites.get(item.id)
+            if favorite is not None:
+                favorites.delete(favorite)
         session.refresh(item)
         session.expunge(item)
     return item

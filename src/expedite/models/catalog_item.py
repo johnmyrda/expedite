@@ -11,6 +11,16 @@ if TYPE_CHECKING:
     from expedite.models.order import OrderLineRecord
 
 
+class CatalogFavorite(SQLModel, table=True):
+    __tablename__ = "catalog_favorites"
+
+    catalog_item_id: int = Field(
+        primary_key=True,
+        foreign_key="catalog.id",
+        ondelete="CASCADE",
+    )
+
+
 class CatalogItem(SQLModel, table=True):
     __tablename__ = "catalog"
     __table_args__ = (CheckConstraint("base_price_cents >= 0"),)
@@ -26,6 +36,4 @@ class CatalogItem(SQLModel, table=True):
         back_populates="catalog_item",
         cascade_delete=True,
     )
-    order_lines: list["OrderLineRecord"] = Relationship(
-        back_populates="catalog_item"
-    )
+    order_lines: list["OrderLineRecord"] = Relationship(back_populates="catalog_item")

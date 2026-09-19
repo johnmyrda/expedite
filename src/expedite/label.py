@@ -2,13 +2,16 @@
 
 import os
 import sys
+from io import BytesIO
 from pathlib import Path
 from typing import TypeAlias
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from expedite.config import LABEL_WIDTH_PX
 from expedite.models import Order
+from expedite.money import parse_money_amount
+from expedite.storage.settings import receipt_settings
 
 LabelFont: TypeAlias = ImageFont.ImageFont | ImageFont.FreeTypeFont
 
@@ -133,9 +136,36 @@ def _draw_centered(
     return y + _line_height(draw, font)
 
 
+def _receipt_logo(data: bytes | None, max_width: int, max_height: int = 180) -> Image.Image | None:
+    if data is None:
+        return None
+    try:
+        with Image.open(BytesIO(data)) as source:
+            logo = source.convert("RGBA")
+    except OSError:
+        return None
+    content_bounds = logo.getchannel("A").getbbox()
+    if content_bounds is None:
+        return None
+    logo = logo.crop(content_bounds)
+    logo.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+    flattened = Image.new("RGB", logo.size, "white")
+    flattened.paste(logo, mask=logo.getchannel("A"))
+    # Thermal printers render only black and white. Normalize arbitrary brand
+    # colors so light logos do not disappear when converted to ESC/POS raster.
+    return ImageOps.autocontrast(ImageOps.grayscale(flattened)).convert("RGB")
+
+
 def label_filename(order: Order) -> str:
     timestamp = order.timestamp.strftime("%Y%m%d_%H%M%S")
     return f"order_{order.order_id}_{timestamp}.png"
+
+
+def _receipt_cost(value: object) -> str:
+    try:
+        return "" if parse_money_amount(value).is_zero() else str(value)
+    except ValueError:
+        return str(value)
 
 
 def render_label(order: Order) -> Path:
@@ -146,7 +176,9 @@ def render_label(order: Order) -> Path:
     # Start with generous height, then crop to the actual receipt length. The
     # RP332 is a receipt printer, so labels should be variable-height instead
     # of fixed 4x6 shipping-label pages.
-    image = Image.new("RGB", (LABEL_WIDTH_PX, 1600), "white")
+    settings = receipt_settings()
+    notes_height_px = settings.notes_height_px
+    image = Image.new("RGB", (LABEL_WIDTH_PX, 3200 + notes_height_px), "white")
     draw = ImageDraw.Draw(image)
 
     margin = 28
@@ -159,7 +191,13 @@ def render_label(order: Order) -> Path:
     small_font = _font(22)
 
     y = margin
-    y = _draw_centered(draw, "EXPEDITE", y, title_font) + 12
+    logo = _receipt_logo(settings.logo_png, content_width)
+    if logo is not None:
+        image.paste(logo, ((LABEL_WIDTH_PX - logo.width) // 2, y))
+        y += logo.height + 12
+    for line in _wrap_text(draw, settings.name, title_font, content_width):
+        y = _draw_centered(draw, line, y, title_font) + 6
+    y += 6
     y = _draw_centered(draw, f"Order #{order.order_id}", y, order_font) + 18
     draw.line((margin, y, LABEL_WIDTH_PX - margin, y), fill="black", width=3)
     y += 20
@@ -168,12 +206,26 @@ def render_label(order: Order) -> Path:
         ("Name", order.name),
         ("Phone", order.phone),
         ("Work Request", order.work_request),
-        ("Cost", str(order.cost)),
+        ("Cost", _receipt_cost(order.cost)),
     ):
         draw.text((margin, y), label.upper(), fill="black", font=header_font)
         y += _line_height(draw, header_font) + 8
         y = _draw_wrapped(draw, value, (margin, y), body_font, content_width)
         y += 18
+
+    checkbox_size = 30
+    draw.rectangle(
+        (margin, y, margin + checkbox_size, y + checkbox_size),
+        outline="black",
+        width=3,
+    )
+    draw.text((margin + checkbox_size + 12, y), "PAID", fill="black", font=body_font)
+    y += max(checkbox_size, _line_height(draw, body_font)) + 24
+
+    draw.line((margin, y, LABEL_WIDTH_PX - margin, y), fill="black", width=2)
+    y += 14
+    draw.text((margin, y), "NOTES:", fill="black", font=header_font)
+    y += _line_height(draw, header_font) + 8 + notes_height_px
 
     draw.line((margin, y, LABEL_WIDTH_PX - margin, y), fill="black", width=2)
     y += 14

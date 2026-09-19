@@ -23,6 +23,32 @@ recreates missing event folders and their `labels/` subdirectories from database
 events are listed or opened. Previously generated CSV and PNG files remain separate filesystem
 artifacts.
 
+## Printing
+
+On Windows, submitting or updating an order sends its generated label directly to the configured
+ESC/POS printer. Print icon buttons beside label-open buttons support manual reprints. Orders stay
+saved if printing fails, and Expedite displays an error that can be retried with the print button.
+
+The configured Windows printer name defaults to `RONGTA 80mm Series Printer`. To use a different installed
+printer name, set a persistent user environment variable and restart Expedite:
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+    "EXPEDITE_PRINTER_NAME",
+    "Exact Windows printer name",
+    "User"
+)
+```
+
+Automatic printing is currently Windows-only. The printer must support ESC/POS raster commands.
+Receipts leave zero-dollar Cost values blank, include an empty Paid checkbox, and provide a blank
+Notes area. The Notes area defaults to 60 mm. Use the settings button on the Events page to change
+its height from 0 to 200 mm, customize the receipt name, and upload or remove a PNG logo up to 5 MB.
+Logos are scaled to fit the receipt while preserving their aspect ratio. These application-wide
+branding settings are stored in SQLite, travel with database backups, and apply to newly generated
+receipts. `EXPEDITE_LABEL_NOTES_HEIGHT_MM` can override the initial Notes default before a value has
+been saved in the UI.
+
 ## Packaging
 
 PyInstaller can reuse the analysis and package caches under `build/pyinstaller`. For fast

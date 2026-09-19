@@ -224,10 +224,9 @@ def register_intake_page() -> None:
                             alt_text = f"{description} · Cost: {display_price(favorite_price)}"
                             favorite_chip = ui.chip(
                                 favorite_item.name,
-                                icon="star",
                                 color="primary",
                                 on_click=add_selected_favorite,
-                            ).props("outline")
+                            ).props("outline square")
                             favorite_chip.props["aria-label"] = alt_text
                             favorite_chip.tooltip(alt_text)
 

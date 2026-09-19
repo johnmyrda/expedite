@@ -70,7 +70,12 @@ def register_catalog_page() -> None:
                         ui.notify(str(error), type="negative")
                     else:
                         action = "Added to" if favorite else "Removed from"
-                        ui.notify(f"{action} intake favorites: {item.name}", type="positive")
+                        selected_count = len(list_catalog_favorite_ids())
+                        ui.notify(
+                            f"{action} intake favorites: {item.name} "
+                            f"({selected_count}/{MAX_CATALOG_FAVORITES} selected)",
+                            type="positive",
+                        )
                         item_list.refresh()
 
                 def cancel_edit() -> None:

@@ -2,14 +2,16 @@
 
 import os
 import sys
+from io import BytesIO
 from pathlib import Path
 from typing import TypeAlias
 
 from PIL import Image, ImageDraw, ImageFont
 
-from expedite.config import LABEL_NOTES_HEIGHT_PX, LABEL_WIDTH_PX
+from expedite.config import LABEL_WIDTH_PX
 from expedite.models import Order
 from expedite.money import parse_money_amount
+from expedite.storage.settings import receipt_settings
 
 LabelFont: TypeAlias = ImageFont.ImageFont | ImageFont.FreeTypeFont
 
@@ -134,6 +136,20 @@ def _draw_centered(
     return y + _line_height(draw, font)
 
 
+def _receipt_logo(data: bytes | None, max_width: int, max_height: int = 180) -> Image.Image | None:
+    if data is None:
+        return None
+    try:
+        with Image.open(BytesIO(data)) as source:
+            logo = source.convert("RGBA")
+    except OSError:
+        return None
+    logo.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+    flattened = Image.new("RGB", logo.size, "white")
+    flattened.paste(logo, mask=logo.getchannel("A"))
+    return flattened
+
+
 def label_filename(order: Order) -> str:
     timestamp = order.timestamp.strftime("%Y%m%d_%H%M%S")
     return f"order_{order.order_id}_{timestamp}.png"
@@ -154,7 +170,9 @@ def render_label(order: Order) -> Path:
     # Start with generous height, then crop to the actual receipt length. The
     # RP332 is a receipt printer, so labels should be variable-height instead
     # of fixed 4x6 shipping-label pages.
-    image = Image.new("RGB", (LABEL_WIDTH_PX, 3200 + LABEL_NOTES_HEIGHT_PX), "white")
+    settings = receipt_settings()
+    notes_height_px = settings.notes_height_px
+    image = Image.new("RGB", (LABEL_WIDTH_PX, 3200 + notes_height_px), "white")
     draw = ImageDraw.Draw(image)
 
     margin = 28
@@ -167,7 +185,13 @@ def render_label(order: Order) -> Path:
     small_font = _font(22)
 
     y = margin
-    y = _draw_centered(draw, "EXPEDITE", y, title_font) + 12
+    logo = _receipt_logo(settings.logo_png, content_width)
+    if logo is not None:
+        image.paste(logo, ((LABEL_WIDTH_PX - logo.width) // 2, y))
+        y += logo.height + 12
+    for line in _wrap_text(draw, settings.name, title_font, content_width):
+        y = _draw_centered(draw, line, y, title_font) + 6
+    y += 6
     y = _draw_centered(draw, f"Order #{order.order_id}", y, order_font) + 18
     draw.line((margin, y, LABEL_WIDTH_PX - margin, y), fill="black", width=3)
     y += 20
@@ -195,7 +219,7 @@ def render_label(order: Order) -> Path:
     draw.line((margin, y, LABEL_WIDTH_PX - margin, y), fill="black", width=2)
     y += 14
     draw.text((margin, y), "NOTES:", fill="black", font=header_font)
-    y += _line_height(draw, header_font) + 8 + LABEL_NOTES_HEIGHT_PX
+    y += _line_height(draw, header_font) + 8 + notes_height_px
 
     draw.line((margin, y, LABEL_WIDTH_PX - margin, y), fill="black", width=2)
     y += 14

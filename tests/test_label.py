@@ -1,4 +1,5 @@
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ from PIL import Image
 
 from expedite import label
 from expedite.models import Event, Order
+from expedite.storage.settings import ReceiptSettings
 
 
 def _order(tmp_path: Path, *, cost: str = "0.00") -> Order:
@@ -38,14 +40,36 @@ def test_notes_area_adds_configured_height(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     order = _order(tmp_path)
-    monkeypatch.setattr(label, "LABEL_NOTES_HEIGHT_PX", 240)
+    monkeypatch.setattr(
+        label,
+        "receipt_settings",
+        lambda: ReceiptSettings(name="EXPEDITE", notes_height_mm=30.0, logo_png=None),
+    )
     receipt_path = label.render_label(order)
     with Image.open(receipt_path) as receipt:
         height_with_notes = receipt.height
 
-    monkeypatch.setattr(label, "LABEL_NOTES_HEIGHT_PX", 0)
+    monkeypatch.setattr(
+        label,
+        "receipt_settings",
+        lambda: ReceiptSettings(name="EXPEDITE", notes_height_mm=0.0, logo_png=None),
+    )
     receipt_path = label.render_label(order)
     with Image.open(receipt_path) as receipt:
         height_without_notes = receipt.height
 
-    assert height_with_notes - height_without_notes == 240
+    assert height_with_notes - height_without_notes == round(30 * 203 / 25.4)
+
+
+def test_receipt_logo_preserves_aspect_ratio_and_transparency() -> None:
+    source = Image.new("RGBA", (400, 200), (0, 0, 0, 0))
+    source.paste((0, 0, 0, 255), (100, 50, 300, 150))
+    buffer = BytesIO()
+    source.save(buffer, format="PNG")
+
+    logo = label._receipt_logo(buffer.getvalue(), max_width=200, max_height=180)
+
+    assert logo is not None
+    assert logo.size == (200, 100)
+    assert logo.mode == "RGB"
+    assert logo.getpixel((0, 0)) == (255, 255, 255)

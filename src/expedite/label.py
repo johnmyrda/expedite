@@ -7,8 +7,9 @@ from typing import TypeAlias
 
 from PIL import Image, ImageDraw, ImageFont
 
-from expedite.config import LABEL_WIDTH_PX
+from expedite.config import LABEL_NOTES_HEIGHT_PX, LABEL_WIDTH_PX
 from expedite.models import Order
+from expedite.money import parse_money_amount
 
 LabelFont: TypeAlias = ImageFont.ImageFont | ImageFont.FreeTypeFont
 
@@ -138,6 +139,13 @@ def label_filename(order: Order) -> str:
     return f"order_{order.order_id}_{timestamp}.png"
 
 
+def _receipt_cost(value: object) -> str:
+    try:
+        return "" if parse_money_amount(value).is_zero() else str(value)
+    except ValueError:
+        return str(value)
+
+
 def render_label(order: Order) -> Path:
     labels_dir = order.event.path / "labels"
     labels_dir.mkdir(parents=True, exist_ok=True)
@@ -146,7 +154,7 @@ def render_label(order: Order) -> Path:
     # Start with generous height, then crop to the actual receipt length. The
     # RP332 is a receipt printer, so labels should be variable-height instead
     # of fixed 4x6 shipping-label pages.
-    image = Image.new("RGB", (LABEL_WIDTH_PX, 1600), "white")
+    image = Image.new("RGB", (LABEL_WIDTH_PX, 3200 + LABEL_NOTES_HEIGHT_PX), "white")
     draw = ImageDraw.Draw(image)
 
     margin = 28
@@ -168,12 +176,26 @@ def render_label(order: Order) -> Path:
         ("Name", order.name),
         ("Phone", order.phone),
         ("Work Request", order.work_request),
-        ("Cost", str(order.cost)),
+        ("Cost", _receipt_cost(order.cost)),
     ):
         draw.text((margin, y), label.upper(), fill="black", font=header_font)
         y += _line_height(draw, header_font) + 8
         y = _draw_wrapped(draw, value, (margin, y), body_font, content_width)
         y += 18
+
+    checkbox_size = 30
+    draw.rectangle(
+        (margin, y, margin + checkbox_size, y + checkbox_size),
+        outline="black",
+        width=3,
+    )
+    draw.text((margin + checkbox_size + 12, y), "PAID", fill="black", font=body_font)
+    y += max(checkbox_size, _line_height(draw, body_font)) + 24
+
+    draw.line((margin, y, LABEL_WIDTH_PX - margin, y), fill="black", width=2)
+    y += 14
+    draw.text((margin, y), "NOTES:", fill="black", font=header_font)
+    y += _line_height(draw, header_font) + 8 + LABEL_NOTES_HEIGHT_PX
 
     draw.line((margin, y, LABEL_WIDTH_PX - margin, y), fill="black", width=2)
     y += 14

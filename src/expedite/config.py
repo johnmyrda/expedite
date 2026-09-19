@@ -18,6 +18,11 @@ PRINTER_NAME = os.environ.get("EXPEDITE_PRINTER_NAME", "RONGTA 80mm Series Print
 LABEL_DPI = 203
 LABEL_PRINTABLE_WIDTH_MM = 72
 LABEL_WIDTH_PX = 576
+LABEL_NOTES_HEIGHT_MM = max(
+    0.0,
+    float(os.environ.get("EXPEDITE_LABEL_NOTES_HEIGHT_MM", "30")),
+)
+LABEL_NOTES_HEIGHT_PX = round(LABEL_NOTES_HEIGHT_MM * LABEL_DPI / 25.4)
 
 
 def _documents_dir() -> Path | None:

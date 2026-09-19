@@ -41,6 +41,16 @@ printer name, set a persistent user environment variable and restart Expedite:
 ```
 
 Automatic printing is currently Windows-only. The printer must support ESC/POS raster commands.
+Receipts leave zero-dollar Cost values blank, include an empty Paid checkbox, and provide a blank
+Notes area. The Notes area defaults to 30 mm; configure its height before starting Expedite with:
+
+```powershell
+[Environment]::SetEnvironmentVariable(
+    "EXPEDITE_LABEL_NOTES_HEIGHT_MM",
+    "30",
+    "User"
+)
+```
 
 ## Packaging
 

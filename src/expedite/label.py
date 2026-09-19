@@ -6,7 +6,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import TypeAlias
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from expedite.config import LABEL_WIDTH_PX
 from expedite.models import Order
@@ -144,10 +144,16 @@ def _receipt_logo(data: bytes | None, max_width: int, max_height: int = 180) -> 
             logo = source.convert("RGBA")
     except OSError:
         return None
+    content_bounds = logo.getchannel("A").getbbox()
+    if content_bounds is None:
+        return None
+    logo = logo.crop(content_bounds)
     logo.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
     flattened = Image.new("RGB", logo.size, "white")
     flattened.paste(logo, mask=logo.getchannel("A"))
-    return flattened
+    # Thermal printers render only black and white. Normalize arbitrary brand
+    # colors so light logos do not disappear when converted to ESC/POS raster.
+    return ImageOps.autocontrast(ImageOps.grayscale(flattened)).convert("RGB")
 
 
 def label_filename(order: Order) -> str:

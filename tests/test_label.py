@@ -61,9 +61,23 @@ def test_notes_area_adds_configured_height(
     assert height_with_notes - height_without_notes == round(30 * 203 / 25.4)
 
 
+def test_receipt_logo_normalizes_light_colors_for_thermal_printing() -> None:
+    source = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
+    source.paste((255, 190, 30, 255), (10, 10, 90, 90))
+    source.paste((255, 245, 160, 255), (30, 30, 70, 70))
+    buffer = BytesIO()
+    source.save(buffer, format="PNG")
+
+    logo = label._receipt_logo(buffer.getvalue(), max_width=100)
+
+    assert logo is not None
+    assert logo.convert("L").getextrema() == (0, 255)
+
+
 def test_receipt_logo_preserves_aspect_ratio_and_transparency() -> None:
     source = Image.new("RGBA", (400, 200), (0, 0, 0, 0))
     source.paste((0, 0, 0, 255), (100, 50, 300, 150))
+    source.paste((0, 0, 0, 0), (180, 80, 220, 120))
     buffer = BytesIO()
     source.save(buffer, format="PNG")
 
@@ -72,4 +86,4 @@ def test_receipt_logo_preserves_aspect_ratio_and_transparency() -> None:
     assert logo is not None
     assert logo.size == (200, 100)
     assert logo.mode == "RGB"
-    assert logo.getpixel((0, 0)) == (255, 255, 255)
+    assert logo.getpixel((100, 50)) == (255, 255, 255)

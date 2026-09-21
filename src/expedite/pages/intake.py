@@ -38,7 +38,7 @@ class LineDraft:
 
 def register_intake_page() -> None:
     def show_event_not_found() -> None:
-        with ui.column().classes("win98-window w-full max-w-2xl mx-auto p-6 gap-4"):
+        with ui.column().classes("app-page w-full p-6 gap-4"):
             ui.label("Event not found").classes("text-2xl font-bold text-negative")
             ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
 
@@ -51,7 +51,7 @@ def register_intake_page() -> None:
 
         existing_order = get_order(event, edit_order_id) if edit_order_id else None
         if edit_order_id is not None and existing_order is None:
-            with ui.column().classes("win98-window w-full max-w-2xl mx-auto p-6 gap-4"):
+            with ui.column().classes("app-page w-full p-6 gap-4"):
                 ui.label(f"Order #{edit_order_id} not found").classes(
                     "text-2xl font-bold text-negative"
                 )
@@ -112,10 +112,10 @@ def register_intake_page() -> None:
             else:
                 ui.notify(f"Sent label to {printer_name}", type="positive")
 
-        with ui.column().classes("win98-window w-full max-w-4xl mx-auto p-6 gap-6"):
-            with ui.row().classes("win98-title-bar w-full items-center justify-between"):
+        with ui.column().classes("app-page w-full p-6 gap-6"):
+            with ui.row().classes("app-page-header w-full items-center justify-between"):
                 with ui.row().classes("items-center gap-2"):
-                    ui.label(event.name).classes("win98-title-bar-text text-3xl font-bold")
+                    ui.label(event.name).classes("app-page-title text-3xl font-bold")
                     ui.button(
                         icon="folder_open",
                         on_click=lambda: open_local_path(event.path),

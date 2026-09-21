@@ -18,7 +18,7 @@ body,
 .q-layout,
 .q-page-container,
 .nicegui-content {
-  background: #008080 !important;
+  background: #f0f0f0 !important;
 }
 
 body,
@@ -30,57 +30,43 @@ body,
 .q-item,
 .q-notification,
 .q-tooltip {
-  font-family: "Pixelated MS Sans Serif", Arial, sans-serif !important;
-  -webkit-font-smoothing: none;
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif !important;
+  -webkit-font-smoothing: auto;
 }
 
 .nicegui-content {
   min-height: 100vh;
-  padding: 12px !important;
+  padding: 0 !important;
 }
 
-.win98-window {
-  background: var(--win98-surface);
-  box-shadow: var(--win98-window);
-  padding: 3px !important;
-  gap: 8px !important;
+.app-page {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0;
+  min-height: 100vh;
+  margin: 0 !important;
+  padding: 16px !important;
+  gap: 16px !important;
+  color: #222;
+  background: #f0f0f0;
+  box-sizing: border-box;
+  overflow-x: auto;
 }
 
-.win98-window > :not(.win98-title-bar) {
-  width: calc(100% - 16px) !important;
-  margin-left: 8px;
-  margin-right: 8px;
+.app-page-header {
+  min-height: 42px;
+  padding: 0 0 10px !important;
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(to bottom, var(--win98-shadow) 0 50%, var(--win98-highlight) 50% 100%) 2;
 }
 
-.win98-window > :last-child {
-  margin-bottom: 8px;
-}
-
-.win98-title-bar {
-  min-height: 30px;
-  padding: 3px 4px !important;
-  background: linear-gradient(90deg, var(--win98-blue), var(--win98-blue-light));
-  color: white;
-}
-
-.win98-title-bar-text,
-.win98-title-bar .win98-title-bar-text {
-  color: white !important;
-  font-family: "Pixelated MS Sans Serif", Arial, sans-serif !important;
-  font-size: 13px !important;
-  font-weight: bold !important;
-  line-height: 18px !important;
+.app-page-title {
+  color: #111 !important;
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif !important;
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  line-height: 30px !important;
   letter-spacing: 0;
-}
-
-.win98-window .text-xl {
-  font-size: 13px !important;
-  line-height: 18px !important;
-}
-
-.win98-window .text-lg {
-  font-size: 12px !important;
-  line-height: 17px !important;
 }
 
 .q-card {
@@ -101,9 +87,9 @@ body,
 
 button.q-btn {
   min-width: 75px;
-  min-height: 25px;
+  min-height: 30px;
   padding: 0 12px;
-  font-size: 11px !important;
+  font-size: 13px !important;
   color: #222 !important;
   background: var(--win98-surface) !important;
   border: 0 !important;
@@ -124,16 +110,16 @@ button.q-btn:focus-visible {
 }
 
 button.q-btn.q-btn--round {
-  width: 27px;
-  min-width: 27px;
-  height: 25px;
-  min-height: 25px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
   padding: 0;
   border-radius: 0 !important;
 }
 
 button.q-btn.q-btn--dense:not(.q-btn--round) {
-  min-height: 23px;
+  min-height: 27px;
 }
 
 .q-btn::before,
@@ -177,8 +163,8 @@ button.q-btn.q-btn--dense:not(.q-btn--round) {
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  font-family: "Pixelated MS Sans Serif", Arial, sans-serif !important;
-  font-size: 11px !important;
+  font-family: Tahoma, "Segoe UI", Arial, sans-serif !important;
+  font-size: 13px !important;
   line-height: normal !important;
 }
 
@@ -188,7 +174,7 @@ button.q-btn.q-btn--dense:not(.q-btn--round) {
 .q-field__prepend,
 .q-field__append {
   color: #222 !important;
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 
 .q-field--disabled .q-field__control,
@@ -210,7 +196,8 @@ button.q-btn.q-btn--dense:not(.q-btn--round) {
 }
 
 .q-chip {
-  min-height: 25px;
+  min-height: 30px;
+  font-size: 13px;
   color: #222 !important;
   background: var(--win98-surface) !important;
   border: 0 !important;
@@ -299,7 +286,7 @@ button.q-btn.q-btn--dense:not(.q-btn--round) {
   border: 1px solid #000;
   border-radius: 0 !important;
   box-shadow: 1px 1px var(--win98-shadow);
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 
 a,
@@ -352,11 +339,7 @@ img.rounded {
 }
 
 @media (max-width: 700px) {
-  .nicegui-content {
-    padding: 4px !important;
-  }
-
-  .win98-window {
-    width: 100% !important;
+  .app-page {
+    padding: 8px !important;
   }
 }

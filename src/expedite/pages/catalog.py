@@ -27,9 +27,9 @@ def register_catalog_page() -> None:
             "creating": False,
         }
 
-        with ui.column().classes("win98-window w-full max-w-6xl mx-auto p-6 gap-6"):
-            with ui.row().classes("win98-title-bar w-full items-center justify-between"):
-                ui.label("Catalog").classes("win98-title-bar-text text-3xl font-bold")
+        with ui.column().classes("app-page w-full p-6 gap-6"):
+            with ui.row().classes("app-page-header w-full items-center justify-between"):
+                ui.label("Catalog").classes("app-page-title text-3xl font-bold")
                 ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
 
             with ui.row().classes("w-full items-center gap-3"):

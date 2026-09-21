@@ -12,13 +12,14 @@ from expedite.storage.sqlite_store import (
     save_catalog_item,
     set_catalog_item_favorite,
 )
+from expedite.theme import apply_windows_98_theme
 
 
 def register_catalog_page() -> None:
     @ui.page("/catalog")
     def catalog_page() -> None:
+        apply_windows_98_theme()
         ui.page_title(f"{APP_NAME} - Catalog")
-        ui.add_head_html("<style>body { background: #f7f7f7; }</style>")
 
         state: dict[str, int | str | bool | None] = {
             "filter": "",
@@ -26,9 +27,9 @@ def register_catalog_page() -> None:
             "creating": False,
         }
 
-        with ui.column().classes("w-full max-w-6xl mx-auto p-6 gap-6"):
-            with ui.row().classes("w-full items-center justify-between"):
-                ui.label("Catalog").classes("text-3xl font-bold")
+        with ui.column().classes("win98-window w-full max-w-6xl mx-auto p-6 gap-6"):
+            with ui.row().classes("win98-title-bar w-full items-center justify-between"):
+                ui.label("Catalog").classes("win98-title-bar-text text-3xl font-bold")
                 ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
 
             with ui.row().classes("w-full items-center gap-3"):

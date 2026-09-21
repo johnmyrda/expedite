@@ -10,6 +10,7 @@ from expedite.local_files import open_local_path
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import export_orders_csv, list_order_records
+from expedite.theme import apply_windows_98_theme
 
 
 def display_timestamp(value: datetime) -> str:
@@ -19,9 +20,10 @@ def display_timestamp(value: datetime) -> str:
 def register_orders_page() -> None:
     @ui.page("/events/{folder_name}/orders")
     def orders_page(folder_name: str) -> None:
+        apply_windows_98_theme()
         event = get_event(folder_name)
         if event is None:
-            with ui.column().classes("w-full max-w-2xl mx-auto p-6 gap-4"):
+            with ui.column().classes("win98-window w-full max-w-2xl mx-auto p-6 gap-4"):
                 ui.label("Event not found").classes("text-2xl font-bold text-negative")
                 ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
             return
@@ -37,10 +39,12 @@ def register_orders_page() -> None:
             else:
                 ui.notify(f"Sent label to {printer_name}", type="positive")
 
-        with ui.column().classes("w-full max-w-6xl mx-auto p-6 gap-6"):
-            with ui.row().classes("w-full items-center justify-between"):
+        with ui.column().classes("win98-window w-full max-w-6xl mx-auto p-6 gap-6"):
+            with ui.row().classes("win98-title-bar w-full items-center justify-between"):
                 with ui.row().classes("items-center gap-2"):
-                    ui.label(f"{event.name} Orders").classes("text-3xl font-bold")
+                    ui.label(f"{event.name} Orders").classes(
+                        "win98-title-bar-text text-3xl font-bold"
+                    )
                     ui.button(
                         icon="folder_open",
                         on_click=lambda: open_local_path(event.path),

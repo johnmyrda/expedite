@@ -15,6 +15,7 @@ from expedite.pages.events import register_events_page
 from expedite.pages.intake import register_intake_page
 from expedite.pages.orders import register_orders_page
 from expedite.storage.events import ensure_data_dir
+from expedite.theme import register_theme_assets
 
 
 def _parse_args() -> argparse.Namespace:
@@ -32,6 +33,7 @@ def _parse_args() -> argparse.Namespace:
 
 def _run(*, port: int | None, smoke_test_marker: Path | None) -> None:
     if smoke_test_marker is not None:
+
         def mark_native_window_shown() -> None:
             smoke_test_marker.parent.mkdir(parents=True, exist_ok=True)
             smoke_test_marker.write_text("shown\n", encoding="utf-8")
@@ -40,6 +42,7 @@ def _run(*, port: int | None, smoke_test_marker: Path | None) -> None:
         app.native.on("shown", mark_native_window_shown)
 
     ensure_data_dir()
+    register_theme_assets()
     register_catalog_page()
     register_event_details_page()
     register_events_page()

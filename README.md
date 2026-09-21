@@ -23,6 +23,13 @@ recreates missing event folders and their `labels/` subdirectories from database
 events are listed or opened. Previously generated CSV and PNG files remain separate filesystem
 artifacts.
 
+## Interface theme
+
+The desktop interface uses a locally vendored copy of
+[98.css](https://jdan.github.io/98.css/) with a NiceGUI/Quasar compatibility layer to recreate the
+Windows 98 visual style. Theme assets are packaged with the application and do not require internet
+access. The upstream MIT license is included at `src/expedite/static/98.css.LICENSE`.
+
 ## Catalog favorites
 
 Use the star buttons on the Catalog page to favorite up to 10 active items. Favorites appear as

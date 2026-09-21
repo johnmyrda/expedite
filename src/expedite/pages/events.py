@@ -15,15 +15,16 @@ from expedite.storage.settings import (
     save_receipt_settings,
     validate_receipt_logo_png,
 )
+from expedite.theme import apply_windows_98_theme
 
 
 def register_events_page() -> None:
     @ui.page("/")
     def events_page() -> None:
+        apply_windows_98_theme()
         ui.page_title(APP_NAME)
-        ui.add_head_html("<style>body { background: #f7f7f7; }</style>")
 
-        with ui.column().classes("w-full max-w-3xl mx-auto p-6 gap-6"):
+        with ui.column().classes("win98-window w-full max-w-3xl mx-auto p-6 gap-6"):
             app_data_dir = data_dir()
 
             current_settings = receipt_settings()
@@ -122,9 +123,9 @@ def register_events_page() -> None:
                 logo_upload.reset()
                 settings_dialog.open()
 
-            with ui.row().classes("w-full items-center justify-between"):
+            with ui.row().classes("win98-title-bar w-full items-center justify-between"):
                 with ui.row().classes("items-center gap-2"):
-                    ui.label(APP_NAME).classes("text-3xl font-bold")
+                    ui.label(APP_NAME).classes("win98-title-bar-text text-3xl font-bold")
                     ui.button(
                         icon="folder_open",
                         on_click=lambda: open_local_path(app_data_dir),

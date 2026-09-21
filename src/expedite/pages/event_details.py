@@ -12,14 +12,16 @@ from expedite.storage.sqlite_store import (
     save_event,
     save_event_catalog_price,
 )
+from expedite.theme import apply_windows_98_theme
 
 
 def register_event_details_page() -> None:
     @ui.page("/events/{folder_name}/manage")
     def event_details_page(folder_name: str) -> None:
+        apply_windows_98_theme()
         loaded_event = get_event(folder_name)
         if loaded_event is None:
-            with ui.column().classes("w-full max-w-2xl mx-auto p-6 gap-4"):
+            with ui.column().classes("win98-window w-full max-w-2xl mx-auto p-6 gap-4"):
                 ui.label("Event not found").classes("text-2xl font-bold text-negative")
                 ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
             return
@@ -28,9 +30,11 @@ def register_event_details_page() -> None:
         ui.page_title(f"{event.name} - Manage")
         filters = {"query": "", "pricing": "all"}
 
-        with ui.column().classes("w-full max-w-6xl mx-auto p-6 gap-6"):
-            with ui.row().classes("w-full items-center justify-between"):
-                title = ui.label(f"Manage {event.name}").classes("text-3xl font-bold")
+        with ui.column().classes("win98-window w-full max-w-6xl mx-auto p-6 gap-6"):
+            with ui.row().classes("win98-title-bar w-full items-center justify-between"):
+                title = ui.label(f"Manage {event.name}").classes(
+                    "win98-title-bar-text text-3xl font-bold"
+                )
                 with ui.row().classes("gap-2"):
                     ui.button(
                         "Intake",

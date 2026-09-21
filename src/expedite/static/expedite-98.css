@@ -1,0 +1,362 @@
+/* NiceGUI/Quasar compatibility layer for the vendored 98.css design system. */
+:root {
+  --win98-surface: #c0c0c0;
+  --win98-face: #dfdfdf;
+  --win98-highlight: #ffffff;
+  --win98-shadow: #808080;
+  --win98-frame: #0a0a0a;
+  --win98-blue: #000080;
+  --win98-blue-light: #1084d0;
+  --win98-raised: inset -1px -1px var(--win98-frame), inset 1px 1px var(--win98-highlight), inset -2px -2px var(--win98-shadow), inset 2px 2px var(--win98-face);
+  --win98-sunken: inset -1px -1px var(--win98-highlight), inset 1px 1px var(--win98-frame), inset -2px -2px var(--win98-face), inset 2px 2px var(--win98-shadow);
+  --win98-window: inset -1px -1px var(--win98-frame), inset 1px 1px var(--win98-face), inset -2px -2px var(--win98-shadow), inset 2px 2px var(--win98-highlight);
+}
+
+html,
+body,
+#q-app,
+.q-layout,
+.q-page-container,
+.nicegui-content {
+  background: #008080 !important;
+}
+
+body,
+.q-card,
+.q-btn,
+.q-field,
+.q-chip,
+.q-badge,
+.q-item,
+.q-notification,
+.q-tooltip {
+  font-family: "Pixelated MS Sans Serif", Arial, sans-serif !important;
+  -webkit-font-smoothing: none;
+}
+
+.nicegui-content {
+  min-height: 100vh;
+  padding: 12px !important;
+}
+
+.win98-window {
+  background: var(--win98-surface);
+  box-shadow: var(--win98-window);
+  padding: 3px !important;
+  gap: 8px !important;
+}
+
+.win98-window > :not(.win98-title-bar) {
+  width: calc(100% - 16px) !important;
+  margin-left: 8px;
+  margin-right: 8px;
+}
+
+.win98-window > :last-child {
+  margin-bottom: 8px;
+}
+
+.win98-title-bar {
+  min-height: 30px;
+  padding: 3px 4px !important;
+  background: linear-gradient(90deg, var(--win98-blue), var(--win98-blue-light));
+  color: white;
+}
+
+.win98-title-bar-text,
+.win98-title-bar .win98-title-bar-text {
+  color: white !important;
+  font-family: "Pixelated MS Sans Serif", Arial, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: bold !important;
+  line-height: 18px !important;
+  letter-spacing: 0;
+}
+
+.win98-window .text-xl {
+  font-size: 13px !important;
+  line-height: 18px !important;
+}
+
+.win98-window .text-lg {
+  font-size: 12px !important;
+  line-height: 17px !important;
+}
+
+.q-card {
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+}
+
+.q-card.bg-amber-50 {
+  background: #ffffe1 !important;
+}
+
+.q-card.bg-gray-50,
+.bg-blue-50 {
+  background: var(--win98-face) !important;
+}
+
+button.q-btn {
+  min-width: 75px;
+  min-height: 25px;
+  padding: 0 12px;
+  font-size: 11px !important;
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+  text-shadow: none !important;
+  text-transform: none !important;
+}
+
+button.q-btn:not(:disabled):active {
+  box-shadow: var(--win98-sunken) !important;
+  transform: translate(1px, 1px);
+}
+
+button.q-btn:focus-visible {
+  outline: 1px dotted #000 !important;
+  outline-offset: -4px;
+}
+
+button.q-btn.q-btn--round {
+  width: 27px;
+  min-width: 27px;
+  height: 25px;
+  min-height: 25px;
+  padding: 0;
+  border-radius: 0 !important;
+}
+
+button.q-btn.q-btn--dense:not(.q-btn--round) {
+  min-height: 23px;
+}
+
+.q-btn::before,
+.q-btn .q-focus-helper {
+  display: none !important;
+}
+
+.q-btn .q-icon {
+  color: #222;
+  font-size: 17px;
+}
+
+.q-btn.text-negative .q-icon {
+  color: #800000;
+}
+
+.q-field--outlined .q-field__control {
+  color: #222 !important;
+  background: white !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-sunken) !important;
+}
+
+.q-field--outlined .q-field__control::before,
+.q-field--outlined .q-field__control::after {
+  border: 0 !important;
+}
+
+.q-field--focused .q-field__control {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+.q-field input,
+.q-field textarea,
+.q-field select {
+  height: auto !important;
+  padding: 0 !important;
+  color: #222 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: "Pixelated MS Sans Serif", Arial, sans-serif !important;
+  font-size: 11px !important;
+  line-height: normal !important;
+}
+
+.q-field__label,
+.q-field__prefix,
+.q-field__suffix,
+.q-field__prepend,
+.q-field__append {
+  color: #222 !important;
+  font-size: 11px !important;
+}
+
+.q-field--disabled .q-field__control,
+.q-field--readonly .q-field__control {
+  background: var(--win98-surface) !important;
+}
+
+.q-checkbox__bg {
+  color: #222 !important;
+  background: white;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-sunken);
+}
+
+.q-checkbox[aria-checked="true"] .q-checkbox__bg {
+  color: white !important;
+  background: var(--win98-blue) !important;
+}
+
+.q-chip {
+  min-height: 25px;
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+}
+
+.q-chip:active {
+  box-shadow: var(--win98-sunken) !important;
+}
+
+.q-badge {
+  color: #222 !important;
+  background: var(--win98-face) !important;
+  border: 1px solid var(--win98-shadow);
+  border-radius: 0 !important;
+}
+
+.q-separator {
+  height: 2px !important;
+  background: linear-gradient(var(--win98-shadow) 0 1px, var(--win98-highlight) 1px 2px) !important;
+}
+
+.border,
+.border-b {
+  border-color: var(--win98-shadow) !important;
+}
+
+.q-dialog__backdrop {
+  background: rgba(0, 0, 0, 0.35) !important;
+}
+
+.q-dialog__inner > .q-card {
+  border: 0 !important;
+  box-shadow: var(--win98-window) !important;
+}
+
+.q-menu {
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-window) !important;
+}
+
+.q-item {
+  min-height: 24px;
+  color: #222 !important;
+}
+
+.q-item.q-manual-focusable--focused,
+.q-item--active,
+.q-item:hover {
+  color: white !important;
+  background: var(--win98-blue) !important;
+}
+
+.q-uploader {
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+}
+
+.q-uploader__header {
+  color: white !important;
+  background: linear-gradient(90deg, var(--win98-blue), var(--win98-blue-light)) !important;
+  border-radius: 0 !important;
+}
+
+.q-notification {
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-window) !important;
+}
+
+.q-notification__icon {
+  color: var(--win98-blue) !important;
+}
+
+.q-tooltip {
+  max-width: 320px;
+  padding: 3px 5px !important;
+  color: #222 !important;
+  background: #ffffe1 !important;
+  border: 1px solid #000;
+  border-radius: 0 !important;
+  box-shadow: 1px 1px var(--win98-shadow);
+  font-size: 11px !important;
+}
+
+a,
+.q-link,
+a.text-primary {
+  color: #0000ff !important;
+  text-decoration: underline !important;
+}
+
+.text-primary {
+  color: #000080 !important;
+}
+
+.text-gray-400,
+.text-gray-500,
+.text-gray-600 {
+  color: #555 !important;
+}
+
+.q-toggle__track {
+  border-radius: 0 !important;
+}
+
+.q-toggle__thumb::after {
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+}
+
+img.rounded {
+  border-radius: 0 !important;
+  box-shadow: var(--win98-sunken);
+}
+
+/* NiceGUI places Quasar's color utilities in an !important cascade layer.
+   Overrides in the first-declared theme layer keep classic controls legible. */
+@layer theme {
+  button.q-btn {
+    color: #222 !important;
+    background: var(--win98-surface) !important;
+  }
+
+  button.q-btn.bg-primary {
+    box-shadow: inset -2px -2px var(--win98-frame), inset 1px 1px var(--win98-frame), inset 2px 2px var(--win98-highlight), inset -3px -3px var(--win98-shadow), inset 3px 3px var(--win98-face) !important;
+  }
+
+  button.q-btn .q-icon,
+  .q-chip {
+    color: #222 !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .nicegui-content {
+    padding: 4px !important;
+  }
+
+  .win98-window {
+    width: 100% !important;
+  }
+}

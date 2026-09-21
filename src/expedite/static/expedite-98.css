@@ -30,8 +30,8 @@ body,
 .q-item,
 .q-notification,
 .q-tooltip {
-  font-family: Tahoma, "Segoe UI", Arial, sans-serif !important;
-  -webkit-font-smoothing: auto;
+  font-family: "Pixelated MS Sans Serif", Tahoma, Arial, sans-serif !important;
+  -webkit-font-smoothing: none;
 }
 
 .nicegui-content {
@@ -62,7 +62,7 @@ body,
 
 .app-page-title {
   color: #111 !important;
-  font-family: Tahoma, "Segoe UI", Arial, sans-serif !important;
+  font-family: "Pixelated MS Sans Serif", Tahoma, Arial, sans-serif !important;
   font-size: 24px !important;
   font-weight: 600 !important;
   line-height: 30px !important;
@@ -163,7 +163,7 @@ button.q-btn.q-btn--dense:not(.q-btn--round) {
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  font-family: Tahoma, "Segoe UI", Arial, sans-serif !important;
+  font-family: "Pixelated MS Sans Serif", Tahoma, Arial, sans-serif !important;
   font-size: 13px !important;
   line-height: normal !important;
 }

@@ -81,9 +81,10 @@ def register_event_details_page() -> None:
                 ui.button("Save Details", on_click=save_details).props("color=primary")
 
             with group_box("Catalog Price Overrides"):
-                ui.label("Leave an event price blank to use the catalog base price.").classes(
-                    "text-sm text-gray-500"
-                )
+                ui.label(
+                    "Prices save automatically when you press Enter or leave the field. "
+                    "Leave an event price blank to use the catalog base price."
+                ).classes("text-sm text-gray-500")
                 with ui.row().classes("w-full items-center gap-3 flex-wrap"):
                     with labeled_field("Filter by name or description", classes="grow min-w-64"):
                         filter_input = ui.input().props("outlined clearable").classes("w-full")
@@ -155,7 +156,7 @@ def register_event_details_page() -> None:
                                 ("Base Price", "base_price", "130px"),
                                 ("Event Price", "event_price", "180px"),
                                 ("Status", "status", "150px"),
-                                ("Actions", None, "100px"),
+                                ("Actions", None, "64px"),
                             ):
                                 with ui.element("th").style(f"width: {width}"):
                                     if column_key is None:
@@ -213,11 +214,13 @@ def register_event_details_page() -> None:
                                             status += " · Inactive"
                                         ui.label(status).classes("management-price-status")
                                     with ui.element("td").classes("classic-actions"):
+                                        last_saved_price = {"value": override}
 
                                         def save_override(
                                             catalog_item_id: int | None = item.id,
                                             price_field: Input = price_input,
                                             item_name: str = item.name,
+                                            saved_price: dict[str, int | None] = last_saved_price,
                                         ) -> None:
                                             if catalog_item_id is None:
                                                 return
@@ -231,9 +234,12 @@ def register_event_details_page() -> None:
                                             except ValueError as error:
                                                 ui.notify(str(error), type="negative")
                                                 return
+                                            if price_cents == saved_price["value"]:
+                                                return
                                             save_event_catalog_price(
                                                 event, catalog_item_id, price_cents
                                             )
+                                            saved_price["value"] = price_cents
                                             message = (
                                                 "Override saved"
                                                 if price_cents is not None
@@ -242,13 +248,14 @@ def register_event_details_page() -> None:
                                             price_list.refresh()
                                             update_application_status(message, item_name)
 
-                                        save_button = ui.button(
-                                            icon="save", on_click=save_override
-                                        ).props("flat round dense color=primary")
-                                        save_button.props["aria-label"] = (
-                                            f"Save event price for {item.name}"
+                                        price_input.on("blur", save_override)
+                                        price_input.on(
+                                            "keydown",
+                                            js_handler=(
+                                                "(event) => { if (event.key === 'Enter') {"
+                                                " event.preventDefault(); event.target.blur(); } }"
+                                            ),
                                         )
-                                        save_button.tooltip("Save event price")
 
                                         if override is not None:
 

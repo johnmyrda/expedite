@@ -69,6 +69,44 @@ body,
   letter-spacing: 0;
 }
 
+.event-tabs {
+  min-height: 38px;
+  padding: 5px 5px 0;
+  background: var(--win98-surface);
+  box-shadow: var(--win98-raised);
+}
+
+.event-tabs .q-tabs__content {
+  justify-content: flex-start;
+  overflow: visible;
+}
+
+.event-tabs .q-tab {
+  min-width: 110px;
+  min-height: 31px;
+  margin-right: 4px;
+  padding: 0 16px;
+  color: #222 !important;
+  background: var(--win98-face);
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised);
+  font-family: "Pixelated MS Sans Serif", Tahoma, Arial, sans-serif !important;
+  font-size: 13px;
+  text-transform: none;
+}
+
+.event-tabs .q-tab--active {
+  background: #f0f0f0;
+  box-shadow: inset 1px 1px var(--win98-highlight), inset -1px 0 var(--win98-frame), inset 2px 2px var(--win98-face), inset -2px 0 var(--win98-shadow);
+  font-weight: bold;
+  transform: translateY(2px);
+}
+
+.event-tabs .q-tab__indicator,
+.event-tabs .q-focus-helper {
+  display: none !important;
+}
+
 .q-card {
   color: #222 !important;
   background: var(--win98-surface) !important;
@@ -333,7 +371,8 @@ img.rounded {
   }
 
   button.q-btn .q-icon,
-  .q-chip {
+  .q-chip,
+  .event-tabs .q-tab {
     color: #222 !important;
   }
 }

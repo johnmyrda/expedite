@@ -5,6 +5,7 @@ from nicegui.elements.input import Input
 
 from expedite.models import Event
 from expedite.money import display_price, parse_price_cents
+from expedite.pages.navigation import event_navigation_tabs
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
     event_catalog_prices,
@@ -35,16 +36,9 @@ def register_event_details_page() -> None:
                 title = ui.label(f"Manage {event.name}").classes(
                     "app-page-title text-3xl font-bold"
                 )
-                with ui.row().classes("gap-2"):
-                    ui.button(
-                        "Intake",
-                        on_click=lambda: ui.navigate.to(f"/events/{folder_name}"),
-                    ).props("flat")
-                    ui.button(
-                        "Orders",
-                        on_click=lambda: ui.navigate.to(f"/events/{folder_name}/orders"),
-                    ).props("flat")
-                    ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
+                ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
+
+            event_navigation_tabs(folder_name, "management")
 
             with ui.card().classes("w-full"):
                 ui.label("Event Details").classes("text-xl font-semibold")

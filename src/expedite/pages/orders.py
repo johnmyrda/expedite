@@ -7,6 +7,7 @@ from nicegui import run, ui
 
 from expedite.config import PRINTER_NAME
 from expedite.local_files import open_local_path
+from expedite.pages.navigation import event_navigation_tabs
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import export_orders_csv, list_order_records
@@ -58,15 +59,9 @@ def register_orders_page() -> None:
                         icon="download",
                         on_click=handle_export,
                     ).props("flat")
-                    ui.button(
-                        "Manage",
-                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/manage"),
-                    ).props("flat")
-                    ui.button(
-                        "Intake",
-                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}"),
-                    ).props("flat")
                     ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
+
+            event_navigation_tabs(event.folder_name(), "orders")
 
             if not orders:
                 with ui.card().classes("w-full"):

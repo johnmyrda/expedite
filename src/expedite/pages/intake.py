@@ -11,6 +11,7 @@ from expedite.label import render_label
 from expedite.local_files import open_local_path
 from expedite.models import Order, OrderLine
 from expedite.money import display_price, parse_price_cents
+from expedite.pages.navigation import event_navigation_tabs
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
@@ -120,16 +121,9 @@ def register_intake_page() -> None:
                         icon="folder_open",
                         on_click=lambda: open_local_path(event.path),
                     ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
-                with ui.row().classes("gap-2"):
-                    ui.button(
-                        "Manage",
-                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/manage"),
-                    ).props("flat")
-                    ui.button(
-                        "Orders",
-                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/orders"),
-                    ).props("flat")
-                    ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
+                ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
+
+            event_navigation_tabs(event.folder_name(), "intake")
 
             warning_box = ui.card().classes("w-full bg-amber-50 hidden")
             with warning_box:

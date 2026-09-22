@@ -322,6 +322,36 @@ button.q-btn.classic-quick-add-button {
   white-space: nowrap;
 }
 
+.management-price-list {
+  min-width: 820px;
+}
+
+.management-price-list td {
+  height: 48px;
+}
+
+.management-price-list .management-price-row.has-override td {
+  background: #ffffe1;
+}
+
+.management-price-list .management-price-row.has-override .management-price-status {
+  font-weight: bold;
+}
+
+.management-item-description {
+  overflow: hidden;
+  color: #555;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.management-price-input .q-field__control,
+.management-price-input .q-field__marginal {
+  height: 32px;
+  min-height: 32px;
+}
+
 .event-tabs {
   min-height: 38px;
   padding: 5px 5px 0;

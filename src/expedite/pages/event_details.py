@@ -48,31 +48,30 @@ def register_event_details_page() -> None:
 
             event_navigation_tabs(folder_name, "management")
 
-            with group_box("Event Details"):
-                with ui.row().classes("w-full items-end gap-3 flex-wrap"):
-                    with labeled_field("Event name", classes="grow min-w-64"):
-                        name_input = ui.input(value=event.name).props("outlined").classes("w-full")
-                    with labeled_field("Start date", classes="w-48"):
-                        date_input = (
-                            ui.input(value=event.start_date)
-                            .props("outlined type=date")
-                            .classes("w-full")
-                        )
+            with group_box("Event Details"), ui.row().classes("w-full items-end gap-3 flex-wrap"):
+                with labeled_field("Event name", classes="grow min-w-64"):
+                    name_input = ui.input(value=event.name).props("outlined").classes("w-full")
+                with labeled_field("Start date", classes="w-48"):
+                    date_input = (
+                        ui.input(value=event.start_date)
+                        .props("outlined type=date")
+                        .classes("w-full")
+                    )
 
-                    def save_details() -> None:
-                        nonlocal event
-                        name = (name_input.value or "").strip()
-                        start_date = (date_input.value or "").strip()
-                        if not name or not start_date:
-                            ui.notify("Event name and start date are required.", type="negative")
-                            return
-                        event = event.model_copy(update={"name": name, "start_date": start_date})
-                        save_event(event)
-                        title.text = f"Manage {event.name}"
-                        ui.page_title(f"{event.name} - Manage")
-                        ui.notify("Event details saved", type="positive")
+                def save_details() -> None:
+                    nonlocal event
+                    name = (name_input.value or "").strip()
+                    start_date = (date_input.value or "").strip()
+                    if not name or not start_date:
+                        ui.notify("Event name and start date are required.", type="negative")
+                        return
+                    event = event.model_copy(update={"name": name, "start_date": start_date})
+                    save_event(event)
+                    title.text = f"Manage {event.name}"
+                    ui.page_title(f"{event.name} - Manage")
+                    ui.notify("Event details saved", type="positive")
 
-                    ui.button("Save Details", on_click=save_details).props("color=primary")
+                ui.button("Save Details", on_click=save_details).props("color=primary")
 
             with group_box("Catalog Price Overrides"):
                 ui.label("Leave an event price blank to use the catalog base price.").classes(
@@ -115,82 +114,122 @@ def register_event_details_page() -> None:
                             items.append(item)
 
                     ui.label(f"{len(items)} item(s)").classes("text-sm text-gray-500")
-                    if not items:
-                        ui.label("No catalog items match this filter.").classes(
-                            "text-gray-500 py-4"
-                        )
-                        return
-
-                    with ui.column().classes("w-full gap-0 border rounded"):
-                        for item in items:
-                            override = overrides.get(item.id) if item.id is not None else None
-                            with ui.row().classes(
-                                "w-full items-center gap-3 px-3 py-2 border-b flex-wrap"
+                    with (
+                        ui.element("div").classes("classic-list-panel"),
+                        ui.element("table").classes("classic-list management-price-list"),
+                    ):
+                        with ui.element("thead"), ui.element("tr"):
+                            for heading, width in (
+                                ("Item", "auto"),
+                                ("Base Price", "130px"),
+                                ("Event Price", "180px"),
+                                ("Status", "150px"),
+                                ("Actions", "100px"),
                             ):
-                                with ui.column().classes("grow min-w-64 gap-0"):
-                                    with ui.row().classes("items-center gap-2"):
-                                        ui.label(item.name).classes("font-medium")
-                                        if not item.active:
-                                            ui.badge("Inactive", color="grey")
-                                    if item.description:
-                                        ui.label(item.description).classes("text-sm text-gray-500")
-                                ui.label(f"Base: {display_price(item.base_price_cents)}").classes(
-                                    "w-32 text-sm text-gray-600"
+                                with ui.element("th").style(f"width: {width}"):
+                                    ui.label(heading)
+                        with ui.element("tbody"):
+                            if not items:
+                                with (
+                                    ui.element("tr"),
+                                    ui.element("td").props("colspan=5"),
+                                ):
+                                    ui.label("No catalog items match this filter.")
+
+                            for item in items:
+                                override = overrides.get(item.id) if item.id is not None else None
+                                row = ui.element("tr").classes(
+                                    "management-price-row"
+                                    + (" has-override" if override is not None else "")
                                 )
-                                with labeled_field("Event price", classes="w-40"):
-                                    price_input = (
-                                        ui.input(
-                                            value=(
-                                                f"{override / 100:.2f}"
-                                                if override is not None
-                                                else ""
-                                            ),
+                                with row:
+                                    with ui.element("td"):
+                                        ui.label(item.name).classes("font-medium")
+                                        if item.description:
+                                            ui.label(item.description).classes(
+                                                "management-item-description"
+                                            )
+                                    with ui.element("td"):
+                                        ui.label(display_price(item.base_price_cents))
+                                    with ui.element("td"):
+                                        price_input = (
+                                            ui.input(
+                                                value=(
+                                                    f"{override / 100:.2f}"
+                                                    if override is not None
+                                                    else ""
+                                                ),
+                                            )
+                                            .props("outlined dense prefix=$ inputmode=decimal")
+                                            .classes("management-price-input w-full")
                                         )
-                                        .props("outlined dense prefix=$ inputmode=decimal")
-                                        .classes("w-full")
-                                    )
-
-                                def save_override(
-                                    catalog_item_id: int | None = item.id,
-                                    price_field: Input = price_input,
-                                ) -> None:
-                                    if catalog_item_id is None:
-                                        return
-                                    raw_value = (price_field.value or "").strip()
-                                    try:
-                                        price_cents = (
-                                            parse_price_cents(raw_value) if raw_value else None
+                                        price_input.props["aria-label"] = (
+                                            f"Event price for {item.name}"
                                         )
-                                    except ValueError as error:
-                                        ui.notify(str(error), type="negative")
-                                        return
-                                    save_event_catalog_price(event, catalog_item_id, price_cents)
-                                    message = (
-                                        "Override saved"
-                                        if price_cents is not None
-                                        else "Override cleared"
-                                    )
-                                    ui.notify(message, type="positive")
-                                    price_list.refresh()
+                                    with ui.element("td"):
+                                        status = (
+                                            "Overridden" if override is not None else "Using Base"
+                                        )
+                                        if not item.active:
+                                            status += " · Inactive"
+                                        ui.label(status).classes("management-price-status")
+                                    with ui.element("td").classes("classic-actions"):
 
-                                ui.button(icon="save", on_click=save_override).props(
-                                    "flat round dense color=primary"
-                                ).tooltip("Save event price")
+                                        def save_override(
+                                            catalog_item_id: int | None = item.id,
+                                            price_field: Input = price_input,
+                                        ) -> None:
+                                            if catalog_item_id is None:
+                                                return
+                                            raw_value = (price_field.value or "").strip()
+                                            try:
+                                                price_cents = (
+                                                    parse_price_cents(raw_value)
+                                                    if raw_value
+                                                    else None
+                                                )
+                                            except ValueError as error:
+                                                ui.notify(str(error), type="negative")
+                                                return
+                                            save_event_catalog_price(
+                                                event, catalog_item_id, price_cents
+                                            )
+                                            message = (
+                                                "Override saved"
+                                                if price_cents is not None
+                                                else "Override cleared"
+                                            )
+                                            ui.notify(message, type="positive")
+                                            price_list.refresh()
 
-                                if override is not None:
+                                        save_button = ui.button(
+                                            icon="save", on_click=save_override
+                                        ).props("flat round dense color=primary")
+                                        save_button.props["aria-label"] = (
+                                            f"Save event price for {item.name}"
+                                        )
+                                        save_button.tooltip("Save event price")
 
-                                    def clear_override(
-                                        catalog_item_id: int | None = item.id,
-                                    ) -> None:
-                                        if catalog_item_id is None:
-                                            return
-                                        save_event_catalog_price(event, catalog_item_id, None)
-                                        ui.notify("Override cleared", type="positive")
-                                        price_list.refresh()
+                                        if override is not None:
 
-                                    ui.button(icon="restart_alt", on_click=clear_override).props(
-                                        "flat round dense"
-                                    ).tooltip("Use catalog base price")
+                                            def clear_override(
+                                                catalog_item_id: int | None = item.id,
+                                            ) -> None:
+                                                if catalog_item_id is None:
+                                                    return
+                                                save_event_catalog_price(
+                                                    event, catalog_item_id, None
+                                                )
+                                                ui.notify("Override cleared", type="positive")
+                                                price_list.refresh()
+
+                                            reset_button = ui.button(
+                                                icon="restart_alt", on_click=clear_override
+                                            ).props("flat round dense")
+                                            reset_button.props["aria-label"] = (
+                                                f"Use base price for {item.name}"
+                                            )
+                                            reset_button.tooltip("Use catalog base price")
 
                 def handle_filter_change(
                     change: events.ValueChangeEventArguments[str | None],

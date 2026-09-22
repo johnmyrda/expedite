@@ -6,6 +6,7 @@ from nicegui import ui
 
 from expedite.config import APP_NAME, data_dir
 from expedite.local_files import open_local_path
+from expedite.models import Event
 from expedite.pages.components import (
     application_menu,
     application_status,
@@ -71,34 +72,105 @@ def register_events_page() -> None:
                 ui.button("New Event...", on_click=open_new_event).props("color=primary")
 
             events = list_events()
-            with group_box("Recent Events"):
-                if not events:
-                    ui.label("No events yet. Choose New Event... to begin.").classes(
-                        "text-gray-500"
-                    )
-                else:
-                    for event in events:
-                        with ui.row().classes("w-full items-center justify-between border-b py-2"):
-                            with ui.column().classes("gap-0"):
-                                ui.link(
-                                    event.name,
-                                    f"/events/{event.folder_name()}/manage",
-                                ).classes("font-medium text-primary no-underline")
-                                ui.label(f"{event.start_date} · {event.folder_name()}").classes(
-                                    "text-sm text-gray-500"
-                                )
-                            with ui.row().classes("gap-2"):
-                                ui.button(
-                                    "Intake",
-                                    on_click=lambda e=event: ui.navigate.to(
-                                        f"/events/{e.folder_name()}"
-                                    ),
-                                )
-                                ui.button(
-                                    "Orders",
-                                    on_click=lambda e=event: ui.navigate.to(
-                                        f"/events/{e.folder_name()}/orders"
-                                    ),
-                                ).props("flat")
+            state: dict[str, str | None] = {"selected_folder": None}
 
-            application_status("Ready", f"{len(events)} event(s)")
+            def selected_event() -> Event | None:
+                return next(
+                    (event for event in events if event.folder_name() == state["selected_folder"]),
+                    None,
+                )
+
+            def navigate_selected(suffix: str = "") -> None:
+                event = selected_event()
+                if event is not None:
+                    ui.navigate.to(f"/events/{event.folder_name()}{suffix}")
+
+            @ui.refreshable
+            def events_status() -> None:
+                event = selected_event()
+                detail = (
+                    f"{event.name} selected · {len(events)} event(s)"
+                    if event is not None
+                    else f"{len(events)} event(s)"
+                )
+                application_status("Ready", detail)
+
+            with group_box("Recent Events"):
+                row_elements = {}
+
+                def configure_toolbar() -> None:
+                    enabled = selected_event() is not None
+                    intake_button.enabled = enabled
+                    orders_button.enabled = enabled
+                    management_button.enabled = enabled
+
+                def select_event(folder_name: str) -> None:
+                    previous = state["selected_folder"]
+                    if previous in row_elements:
+                        row_elements[previous].classes(remove="is-selected")
+                    state["selected_folder"] = folder_name
+                    row_elements[folder_name].classes(add="is-selected")
+                    configure_toolbar()
+                    events_status.refresh()
+
+                with ui.row().classes("classic-list-toolbar w-full items-center gap-1"):
+                    intake_button = ui.button(
+                        icon="assignment",
+                        on_click=lambda: navigate_selected(),
+                    ).props("flat round dense")
+                    intake_button.props["aria-label"] = "Open Intake"
+                    intake_button.tooltip("Open Intake")
+                    orders_button = ui.button(
+                        icon="receipt_long",
+                        on_click=lambda: navigate_selected("/orders"),
+                    ).props("flat round dense")
+                    orders_button.props["aria-label"] = "Open Orders"
+                    orders_button.tooltip("Open Orders")
+                    management_button = ui.button(
+                        icon="settings",
+                        on_click=lambda: navigate_selected("/manage"),
+                    ).props("flat round dense")
+                    management_button.props["aria-label"] = "Open Management"
+                    management_button.tooltip("Open Management")
+                    configure_toolbar()
+
+                with (
+                    ui.element("div").classes("classic-list-panel"),
+                    ui.element("table").classes("classic-list event-list"),
+                ):
+                    with ui.element("thead"), ui.element("tr"):
+                        for heading, width in (
+                            ("Event", "40%"),
+                            ("Start Date", "180px"),
+                            ("Folder", "auto"),
+                        ):
+                            with ui.element("th").style(f"width: {width}"):
+                                ui.label(heading)
+                    with ui.element("tbody"):
+                        if not events:
+                            with (
+                                ui.element("tr"),
+                                ui.element("td").props("colspan=3"),
+                            ):
+                                ui.label("No events yet. Choose New Event... to begin.")
+
+                        for event in events:
+                            folder_name = event.folder_name()
+                            row = ui.element("tr").classes("classic-list-row")
+                            row_elements[folder_name] = row
+                            row.on(
+                                "click",
+                                lambda folder=folder_name: select_event(folder),
+                            ).on(
+                                "dblclick",
+                                lambda folder=folder_name: ui.navigate.to(f"/events/{folder}"),
+                            )
+                            with row:
+                                with ui.element("td"):
+                                    ui.label(event.name).classes("font-medium")
+                                with ui.element("td"):
+                                    ui.label(event.start_date)
+                                with ui.element("td"):
+                                    ui.label(folder_name)
+
+            events_status()

@@ -27,7 +27,7 @@ MAX_RECEIPT_NAME_LENGTH = 60
 @dataclass(frozen=True)
 class ReceiptSettings:
     name: str
-    notes_height_mm: float
+    notes_height_mm: int
     logo_png: bytes | None
 
     @property
@@ -35,11 +35,11 @@ class ReceiptSettings:
         return round(self.notes_height_mm * LABEL_DPI / 25.4)
 
 
-def _notes_height(setting: AppSetting | None) -> float:
+def _notes_height(setting: AppSetting | None) -> int:
     if setting is None:
         return DEFAULT_LABEL_NOTES_HEIGHT_MM
     try:
-        value = float(setting.value)
+        value = round(float(setting.value))
     except (TypeError, ValueError):
         return DEFAULT_LABEL_NOTES_HEIGHT_MM
     if not 0 <= value <= MAX_LABEL_NOTES_HEIGHT_MM:
@@ -63,7 +63,7 @@ def receipt_settings() -> ReceiptSettings:
     )
 
 
-def label_notes_height_mm() -> float:
+def label_notes_height_mm() -> int:
     return receipt_settings().notes_height_mm
 
 
@@ -103,8 +103,10 @@ def _save_text_setting(repository: AppSettingRepository, key: str, value: str) -
     repository.save(setting)
 
 
-def save_receipt_settings(*, name: str, notes_height_mm: float, logo_png: bytes | None) -> None:
+def save_receipt_settings(*, name: str, notes_height_mm: int, logo_png: bytes | None) -> None:
     validated_name = _validate_receipt_name(name)
+    if not isinstance(notes_height_mm, int) or isinstance(notes_height_mm, bool):
+        raise TypeError("Notes height must be a whole number of millimeters.")
     if not 0 <= notes_height_mm <= MAX_LABEL_NOTES_HEIGHT_MM:
         raise ValueError(f"Notes height must be between 0 and {MAX_LABEL_NOTES_HEIGHT_MM:g} mm.")
     validate_receipt_logo_png(logo_png)
@@ -116,7 +118,7 @@ def save_receipt_settings(*, name: str, notes_height_mm: float, logo_png: bytes 
         _save_text_setting(
             settings_repository,
             LABEL_NOTES_HEIGHT_KEY,
-            f"{notes_height_mm:g}",
+            str(notes_height_mm),
         )
         logo_asset = assets_repository.get(RECEIPT_LOGO_KEY)
         if logo_png is None:
@@ -129,6 +131,6 @@ def save_receipt_settings(*, name: str, notes_height_mm: float, logo_png: bytes 
             assets_repository.save(logo_asset)
 
 
-def save_label_notes_height_mm(value: float) -> None:
+def save_label_notes_height_mm(value: int) -> None:
     current = receipt_settings()
     save_receipt_settings(name=current.name, notes_height_mm=value, logo_png=current.logo_png)

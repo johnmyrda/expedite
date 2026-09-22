@@ -1,18 +1,19 @@
 """Event details and catalog price override management."""
 
+from dataclasses import dataclass
+from typing import Literal
+
 from nicegui import events, ui
 from nicegui.elements.input import Input
 
 from expedite.models import Event
 from expedite.money import display_price, parse_price_cents
-from expedite.pages.components import (
+from expedite.pages.application_shell import (
     application_menu,
     application_status,
-    group_box,
-    labeled_field,
-    sortable_header,
     update_application_status,
 )
+from expedite.pages.classic_ui import group_box, labeled_field, sortable_header
 from expedite.pages.navigation import event_navigation_tabs, event_page_header
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
@@ -22,6 +23,19 @@ from expedite.storage.sqlite_store import (
     save_event_catalog_price,
 )
 from expedite.theme import apply_windows_98_theme
+
+PricingFilter = Literal["all", "overridden", "base"]
+PriceSortKey = Literal["name", "base_price", "event_price"]
+
+
+@dataclass
+class PriceListState:
+    """Mutable filtering and sorting state for event catalog prices."""
+
+    query: str = ""
+    pricing: PricingFilter = "all"
+    sort_key: PriceSortKey = "name"
+    sort_descending: bool = False
 
 
 def register_event_details_page() -> None:
@@ -39,12 +53,7 @@ def register_event_details_page() -> None:
 
         event: Event = loaded_event
         ui.page_title(f"{event.name} - Manage")
-        filters: dict[str, str | bool] = {
-            "query": "",
-            "pricing": "all",
-            "sort_key": "name",
-            "sort_descending": False,
-        }
+        state = PriceListState()
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
             application_menu()
@@ -101,7 +110,7 @@ def register_event_details_page() -> None:
 
                 @ui.refreshable
                 def price_list() -> None:
-                    query = str(filters["query"]).strip().casefold()
+                    query = state.query.strip().casefold()
                     overrides = event_catalog_prices(event)
                     items = []
                     for item in list_catalog_items():
@@ -112,14 +121,14 @@ def register_event_details_page() -> None:
                         )
                         has_override = item.id in overrides
                         matches_pricing = (
-                            filters["pricing"] == "all"
-                            or (filters["pricing"] == "overridden" and has_override)
-                            or (filters["pricing"] == "base" and not has_override)
+                            state.pricing == "all"
+                            or (state.pricing == "overridden" and has_override)
+                            or (state.pricing == "base" and not has_override)
                         )
                         if matches_text and matches_pricing:
                             items.append(item)
 
-                    sort_key = str(filters["sort_key"])
+                    sort_key = state.sort_key
                     key_functions = {
                         "name": lambda item: item.name.casefold(),
                         "base_price": lambda item: item.base_price_cents,
@@ -127,15 +136,15 @@ def register_event_details_page() -> None:
                     }
                     items.sort(
                         key=key_functions[sort_key],
-                        reverse=bool(filters["sort_descending"]),
+                        reverse=state.sort_descending,
                     )
 
-                    def change_sort(column_key: str) -> None:
-                        if filters["sort_key"] == column_key:
-                            filters["sort_descending"] = not bool(filters["sort_descending"])
+                    def change_sort(column_key: PriceSortKey) -> None:
+                        if state.sort_key == column_key:
+                            state.sort_descending = not state.sort_descending
                         else:
-                            filters["sort_key"] = column_key
-                            filters["sort_descending"] = False
+                            state.sort_key = column_key
+                            state.sort_descending = False
                         price_list.refresh()
 
                     ui.label(f"{len(items)} item(s)").classes("text-sm text-gray-500")
@@ -152,8 +161,8 @@ def register_event_details_page() -> None:
                                 with ui.element("th").style(f"width: {width}"):
                                     sortable_header(
                                         heading,
-                                        active=filters["sort_key"] == column_key,
-                                        descending=bool(filters["sort_descending"]),
+                                        active=state.sort_key == column_key,
+                                        descending=state.sort_descending,
                                         on_click=lambda key=column_key: change_sort(key),
                                     )
                         with ui.element("tbody"):
@@ -247,13 +256,15 @@ def register_event_details_page() -> None:
                 def handle_filter_change(
                     change: events.ValueChangeEventArguments[str | None],
                 ) -> None:
-                    filters["query"] = change.value or ""
+                    state.query = change.value or ""
                     price_list.refresh()
 
                 def handle_pricing_filter_change(
                     change: events.ValueChangeEventArguments[str | None],
                 ) -> None:
-                    filters["pricing"] = change.value or "all"
+                    state.pricing = (
+                        change.value if change.value in {"all", "overridden", "base"} else "all"
+                    )
                     price_list.refresh()
 
                 filter_input.on_value_change(handle_filter_change)

@@ -36,6 +36,43 @@ Modernize Expedite's desktop UI into a readable Windows-classic interface withou
 - Dialog focus, validation retention and upload controls.
 - Accessibility of icon-only actions and table controls.
 
+## Code-review follow-up
+
+A subsequent code review focused on typed state, Locality of Behaviour, component cohesion,
+keyboard behavior and accessibility. The following work was completed:
+
+- Replaced heterogeneous page-state dictionaries with typed dataclasses and `Literal` keys:
+  `CatalogPageState`, `EventsPageState`, `OrdersPageState` and `PriceListState`.
+- Resolved all `ty` diagnostics and switched notes-height configuration, persistence and UI
+  arithmetic to whole integer millimeters. Notes height now has a fixed 60 mm initial default and
+  no environment-variable override. File > Exit now uses NiceGUI's typed `app.shutdown()` API.
+- Split the former catch-all `pages/components.py` module by responsibility:
+  - `pages/classic_ui.py` contains reusable visual primitives and classic dialog behavior.
+  - `pages/application_shell.py` contains the application menu, shutdown and status bar.
+  - `pages/receipt_settings.py` contains the receipt-settings dialog workflow.
+- Kept page-specific event handlers and state close to their controls to preserve Locality of
+  Behaviour rather than introducing broad page-controller abstractions.
+- Added an explicit `submit_on_enter` dialog option. The searchable Intake catalog picker disables
+  default Enter submission so selecting a highlighted option cannot also close the dialog with a
+  stale value.
+- Added accessible names to icon- and symbol-only controls, including folder, catalog search,
+  notes, line removal, receipt open/print and Catalog favorite actions.
+- Corrected the README to document system Tahoma with bundled Wine Tahoma fallbacks instead of
+  describing Pixelated MS Sans Serif as the active interface font.
+- Made catalog-item and favorite updates atomic within one transaction. A regression test verifies
+  that an item edit is rolled back if the favorite limit prevents the favorite change.
+
+Review validation completed without launching the application:
+
+- `uv run ruff check .` passed.
+- `uv run ty check` passed.
+- `uv run pytest -q` passed with 27 tests.
+- `uv run python -m compileall -q src scripts` passed.
+- `git diff --check` passed.
+
+The follow-up review found no remaining merge-blocking issues. Live or interactive application
+validation was intentionally not performed.
+
 ## Deferred work
 
 - Intake initial focus and tab-order review.

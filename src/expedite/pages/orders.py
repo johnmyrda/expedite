@@ -1,25 +1,38 @@
 """Order listing page for an event."""
 
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from nicegui import run, ui
 
 from expedite.config import PRINTER_NAME
 from expedite.local_files import open_local_path
 from expedite.models import OrderRecord
-from expedite.pages.components import (
+from expedite.pages.application_shell import (
     application_menu,
     application_status,
-    enable_list_keyboard,
-    sortable_header,
     update_application_status,
 )
+from expedite.pages.classic_ui import enable_list_keyboard, sortable_header
 from expedite.pages.navigation import event_navigation_tabs, event_page_header
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import export_orders_csv, list_order_records
 from expedite.theme import apply_windows_98_theme
+
+OrderSortKey = Literal["order_id", "timestamp", "name", "phone", "work_request", "cost"]
+
+
+@dataclass
+class OrdersPageState:
+    """Mutable selection and sorting state for an event's orders."""
+
+    selected_order_id: int | None = None
+    sort_key: OrderSortKey = "order_id"
+    sort_descending: bool = True
+    is_printing: bool = False
 
 
 def display_timestamp(value: datetime) -> str:
@@ -41,11 +54,7 @@ def register_orders_page() -> None:
 
         ui.page_title(f"{event.name} - Orders")
         orders = list_order_records(event)
-        state: dict[str, int | str | bool | None] = {
-            "selected_order_id": None,
-            "sort_key": "order_id",
-            "sort_descending": True,
-        }
+        state = OrdersPageState()
 
         def sorted_orders() -> list[OrderRecord]:
             def cost_value(order: OrderRecord) -> float:
@@ -54,7 +63,7 @@ def register_orders_page() -> None:
                 except (TypeError, ValueError):
                     return 0
 
-            key = str(state["sort_key"])
+            key = state.sort_key
             key_functions = {
                 "order_id": lambda order: order.order_id,
                 "timestamp": lambda order: order.timestamp.timestamp(),
@@ -66,7 +75,7 @@ def register_orders_page() -> None:
             return sorted(
                 orders,
                 key=key_functions[key],
-                reverse=bool(state["sort_descending"]),
+                reverse=state.sort_descending,
             )
 
         async def print_label_image(path: Path) -> None:
@@ -91,7 +100,7 @@ def register_orders_page() -> None:
 
             def selected_order() -> OrderRecord | None:
                 return next(
-                    (order for order in orders if order.order_id == state["selected_order_id"]),
+                    (order for order in orders if order.order_id == state.selected_order_id),
                     None,
                 )
 
@@ -122,16 +131,16 @@ def register_orders_page() -> None:
                     receipt_path = selected_receipt_path()
                     edit_button.enabled = order is not None
                     open_button.enabled = receipt_path is not None
-                    print_button.enabled = receipt_path is not None
+                    print_button.enabled = receipt_path is not None and not state.is_printing
                     if receipt_path is not None:
                         open_button.tooltip(str(receipt_path))
                         print_button.tooltip(f"Print on {PRINTER_NAME}")
 
                 def select_order(order_id: int) -> None:
-                    previous_id = state["selected_order_id"]
+                    previous_id = state.selected_order_id
                     if previous_id in row_elements:
                         row_elements[previous_id].classes(remove="is-selected")
-                    state["selected_order_id"] = order_id
+                    state.selected_order_id = order_id
                     row_elements[order_id].classes(add="is-selected")
                     configure_toolbar()
                     order_status.refresh()
@@ -148,8 +157,15 @@ def register_orders_page() -> None:
 
                 async def print_selected_receipt() -> None:
                     receipt_path = selected_receipt_path()
-                    if receipt_path is not None:
+                    if receipt_path is None or state.is_printing:
+                        return
+                    state.is_printing = True
+                    configure_toolbar()
+                    try:
                         await print_label_image(receipt_path)
+                    finally:
+                        state.is_printing = False
+                        configure_toolbar()
 
                 with ui.row().classes("classic-list-toolbar w-full items-center gap-1"):
                     edit_button = ui.button("Edit...", on_click=edit_selected_order).props(
@@ -165,12 +181,12 @@ def register_orders_page() -> None:
                     ui.button("Export...", on_click=handle_export).props("flat dense")
                     configure_toolbar()
 
-                def change_sort(key: str) -> None:
-                    if state["sort_key"] == key:
-                        state["sort_descending"] = not bool(state["sort_descending"])
+                def change_sort(key: OrderSortKey) -> None:
+                    if state.sort_key == key:
+                        state.sort_descending = not state.sort_descending
                     else:
-                        state["sort_key"] = key
-                        state["sort_descending"] = False
+                        state.sort_key = key
+                        state.sort_descending = False
                     order_list.refresh()
 
                 with (
@@ -192,8 +208,8 @@ def register_orders_page() -> None:
                             with ui.element("th").style(f"width: {width}"):
                                 sortable_header(
                                     heading,
-                                    active=state["sort_key"] == key,
-                                    descending=bool(state["sort_descending"]),
+                                    active=state.sort_key == key,
+                                    descending=state.sort_descending,
                                     on_click=lambda sort_key=key: change_sort(sort_key),
                                 )
                     with ui.element("tbody"):
@@ -205,7 +221,7 @@ def register_orders_page() -> None:
                                 ui.label("No orders yet.").classes("text-gray-500")
 
                         for order in sorted_orders():
-                            selected = order.order_id == state["selected_order_id"]
+                            selected = order.order_id == state.selected_order_id
                             row = ui.element("tr").classes(
                                 "classic-list-row" + (" is-selected" if selected else "")
                             )

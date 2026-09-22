@@ -1,20 +1,25 @@
 """Catalog management page."""
 
+from dataclasses import dataclass
+from typing import Literal
+
 from nicegui import events, ui
 from nicegui.element import Element
 
 from expedite.config import APP_NAME
 from expedite.models import CatalogItem
 from expedite.money import display_price, parse_price_cents
-from expedite.pages.components import (
+from expedite.pages.application_shell import (
     application_menu,
     application_status,
+    update_application_status,
+)
+from expedite.pages.classic_ui import (
     classic_dialog,
     enable_list_keyboard,
     group_box,
     labeled_field,
     sortable_header,
-    update_application_status,
 )
 from expedite.storage.sqlite_store import (
     MAX_CATALOG_FAVORITES,
@@ -25,6 +30,19 @@ from expedite.storage.sqlite_store import (
 )
 from expedite.theme import apply_windows_98_theme
 
+CatalogSortKey = Literal["favorite", "name", "description", "price"]
+
+
+@dataclass
+class CatalogPageState:
+    """Mutable state for catalog filtering, selection, editing, and sorting."""
+
+    filter: str = ""
+    selected_id: int | None = None
+    dialog_item_id: int | None = None
+    sort_key: CatalogSortKey = "name"
+    sort_descending: bool = False
+
 
 def register_catalog_page() -> None:
     @ui.page("/catalog")
@@ -32,16 +50,10 @@ def register_catalog_page() -> None:
         apply_windows_98_theme()
         ui.page_title(f"{APP_NAME} - Catalog")
 
-        state: dict[str, int | str | bool | None] = {
-            "filter": "",
-            "selected_id": None,
-            "dialog_item_id": None,
-            "sort_key": "name",
-            "sort_descending": False,
-        }
+        state = CatalogPageState()
 
         def visible_items() -> list[CatalogItem]:
-            query = str(state["filter"] or "").strip().casefold()
+            query = state.filter.strip().casefold()
             return [
                 item
                 for item in list_catalog_items()
@@ -51,7 +63,7 @@ def register_catalog_page() -> None:
             ]
 
         def selected_item() -> CatalogItem | None:
-            selected_id = state["selected_id"]
+            selected_id = state.selected_id
             return next(
                 (item for item in list_catalog_items() if item.id == selected_id),
                 None,
@@ -90,7 +102,7 @@ def register_catalog_page() -> None:
                 return
 
             favorite_ids = set(list_catalog_favorite_ids())
-            was_favorite = state["dialog_item_id"] in favorite_ids
+            was_favorite = state.dialog_item_id in favorite_ids
             wants_favorite = bool(favorite_input.value)
             if wants_favorite and not active_input.value:
                 ui.notify("Inactive catalog items cannot be favorited.", type="negative")
@@ -106,20 +118,19 @@ def register_catalog_page() -> None:
 
             try:
                 saved = save_catalog_item(
-                    item_id=state["dialog_item_id"],
+                    item_id=state.dialog_item_id,
                     name=name,
                     description=(description_input.value or "").strip() or None,
                     base_price_cents=price_cents,
                     active=bool(active_input.value),
+                    favorite=wants_favorite,
                 )
-                if saved.id is not None:
-                    set_catalog_item_favorite(saved.id, wants_favorite)
             except ValueError as error:
                 ui.notify(str(error), type="negative")
                 return
 
-            state["selected_id"] = saved.id
-            state["dialog_item_id"] = saved.id
+            state.selected_id = saved.id
+            state.dialog_item_id = saved.id
             refresh_catalog()
             update_application_status("Catalog item saved", saved.name)
             item_dialog.close()
@@ -152,7 +163,7 @@ def register_catalog_page() -> None:
 
         def configure_favorite_input() -> None:
             favorite_ids = set(list_catalog_favorite_ids())
-            already_favorite = state["dialog_item_id"] in favorite_ids
+            already_favorite = state.dialog_item_id in favorite_ids
             can_favorite = already_favorite or len(favorite_ids) < MAX_CATALOG_FAVORITES
             favorite_input.set_enabled(bool(active_input.value) and can_favorite)
 
@@ -166,7 +177,7 @@ def register_catalog_page() -> None:
         active_input.on_value_change(handle_active_change)
 
         def open_item_dialog(item: CatalogItem | None) -> None:
-            state["dialog_item_id"] = item.id if item is not None else None
+            state.dialog_item_id = item.id if item is not None else None
             name_input.value = item.name if item is not None else ""
             description_input.value = item.description or "" if item is not None else ""
             price_input.value = f"{item.base_price_cents / 100:.2f}" if item is not None else ""
@@ -188,7 +199,7 @@ def register_catalog_page() -> None:
                 def item_list() -> None:
                     items = visible_items()
                     favorite_ids = set(list_catalog_favorite_ids())
-                    sort_key = str(state["sort_key"])
+                    sort_key = state.sort_key
                     key_functions = {
                         "favorite": lambda item: item.id in favorite_ids,
                         "name": lambda item: item.name.casefold(),
@@ -197,13 +208,13 @@ def register_catalog_page() -> None:
                     }
                     items.sort(
                         key=key_functions[sort_key],
-                        reverse=bool(state["sort_descending"]),
+                        reverse=state.sort_descending,
                     )
                     row_elements = {}
 
                     def current_item() -> CatalogItem | None:
                         return next(
-                            (item for item in items if item.id == state["selected_id"]),
+                            (item for item in items if item.id == state.selected_id),
                             None,
                         )
 
@@ -216,17 +227,17 @@ def register_catalog_page() -> None:
                         active_button.enabled = item is not None
 
                     def select_item(item_id: int | None) -> None:
-                        previous_id = state["selected_id"]
+                        previous_id = state.selected_id
                         if previous_id in row_elements:
                             row_elements[previous_id].classes(remove="is-selected")
-                        state["selected_id"] = item_id
+                        state.selected_id = item_id
                         if item_id in row_elements:
                             row_elements[item_id].classes(add="is-selected")
                         configure_toolbar()
                         catalog_status.refresh()
 
                     def start_edit(item_id: int | None = None) -> None:
-                        selected_id = item_id if item_id is not None else state["selected_id"]
+                        selected_id = item_id if item_id is not None else state.selected_id
                         if selected_id is None:
                             return
                         item = next(
@@ -278,12 +289,12 @@ def register_catalog_page() -> None:
                         )
                         configure_toolbar()
 
-                    def change_sort(sort_key: str) -> None:
-                        if state["sort_key"] == sort_key:
-                            state["sort_descending"] = not bool(state["sort_descending"])
+                    def change_sort(sort_key: CatalogSortKey) -> None:
+                        if state.sort_key == sort_key:
+                            state.sort_descending = not state.sort_descending
                         else:
-                            state["sort_key"] = sort_key
-                            state["sort_descending"] = False
+                            state.sort_key = sort_key
+                            state.sort_descending = False
                         item_list.refresh()
 
                     with (
@@ -303,8 +314,8 @@ def register_catalog_page() -> None:
                                 with ui.element("th").style(f"width: {width}"):
                                     sortable_header(
                                         heading,
-                                        active=state["sort_key"] == column_key,
-                                        descending=bool(state["sort_descending"]),
+                                        active=state.sort_key == column_key,
+                                        descending=state.sort_descending,
                                         on_click=lambda key=column_key: change_sort(key),
                                     )
                         with ui.element("tbody"):
@@ -316,7 +327,7 @@ def register_catalog_page() -> None:
                                     ui.label("No catalog items match this filter.")
 
                             for item in items:
-                                selected = item.id == state["selected_id"]
+                                selected = item.id == state.selected_id
                                 row = ui.element("tr").classes(
                                     "classic-list-row"
                                     + (" is-selected" if selected else "")
@@ -356,11 +367,15 @@ def register_catalog_page() -> None:
                                                 ),
                                             )
                                         )
-                                        favorite_button.tooltip(
+                                        favorite_action = (
                                             "Remove from intake favorites"
                                             if is_favorite
                                             else "Add to intake favorites"
                                         )
+                                        favorite_button.props["aria-label"] = (
+                                            f"{favorite_action}: {item.name}"
+                                        )
+                                        favorite_button.tooltip(favorite_action)
                                         if not item.active or (
                                             not is_favorite
                                             and len(favorite_ids) >= MAX_CATALOG_FAVORITES
@@ -376,10 +391,10 @@ def register_catalog_page() -> None:
                 def handle_filter_change(
                     event: events.ValueChangeEventArguments[str | None],
                 ) -> None:
-                    state["filter"] = event.value or ""
+                    state.filter = event.value or ""
                     visible_ids = {item.id for item in visible_items()}
-                    if state["selected_id"] not in visible_ids:
-                        state["selected_id"] = None
+                    if state.selected_id not in visible_ids:
+                        state.selected_id = None
                     item_list.refresh()
                     catalog_status.refresh()
 

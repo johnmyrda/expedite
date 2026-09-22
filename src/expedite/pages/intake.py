@@ -6,20 +6,19 @@ from pathlib import Path
 from textwrap import shorten
 
 from nicegui import events, run, ui
+from nicegui.elements.button import Button
 
 from expedite.config import PRINTER_NAME
 from expedite.label import render_label
 from expedite.local_files import open_local_path
 from expedite.models import Order, OrderLine
 from expedite.money import display_price, parse_price_cents
-from expedite.pages.components import (
+from expedite.pages.application_shell import (
     application_menu,
     application_status,
-    classic_dialog,
-    group_box,
-    labeled_field,
     update_application_status,
 )
+from expedite.pages.classic_ui import classic_dialog, group_box, labeled_field
 from expedite.pages.navigation import event_navigation_tabs, event_page_header
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
@@ -137,6 +136,13 @@ def register_intake_page() -> None:
                 ui.notify(str(error), type="negative", multi_line=True)
             else:
                 update_application_status("Label sent to printer", printer_name)
+
+        async def print_receipt(path: Path, button: Button) -> None:
+            button.disable()
+            try:
+                await print_label_image(path)
+            finally:
+                button.enable()
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
             application_menu()
@@ -300,6 +306,7 @@ def register_intake_page() -> None:
                                     accept_label="Select",
                                     on_accept=select_from_full_catalog,
                                     width="560px",
+                                    submit_on_enter=False,
                                 ) as full_catalog_dialog:
                                     with group_box("Catalog"), labeled_field("Catalog item"):
                                         full_select = (
@@ -313,10 +320,14 @@ def register_intake_page() -> None:
                                         )
                                     full_catalog_dialog.set_initial_focus(full_select)
 
-                                ui.button(
+                                search_button = ui.button(
                                     icon="search",
                                     on_click=full_catalog_dialog.open,
-                                ).props("flat round dense").tooltip("Search catalog")
+                                ).props("flat round dense")
+                                search_button.props["aria-label"] = (
+                                    f"Search catalog for line {index}"
+                                )
+                                search_button.tooltip("Search catalog")
 
                                 with labeled_field("Quantity", classes="w-24"):
                                     quantity_input = (
@@ -341,9 +352,11 @@ def register_intake_page() -> None:
                                         line.show_notes = True
                                         line_editor.refresh()
 
-                                    ui.button(icon="edit_note", on_click=show_notes).props(
-                                        "flat round dense"
-                                    ).tooltip("Add notes")
+                                    notes_button = ui.button(
+                                        icon="edit_note", on_click=show_notes
+                                    ).props("flat round dense")
+                                    notes_button.props["aria-label"] = f"Add notes to line {index}"
+                                    notes_button.tooltip("Add notes")
 
                                 def remove_line() -> None:
                                     line_drafts.remove(line)
@@ -352,9 +365,11 @@ def register_intake_page() -> None:
                                     line_editor.refresh()
                                     update_total()
 
-                                ui.button(icon="delete", on_click=remove_line).props(
-                                    "flat round dense color=negative"
-                                ).tooltip("Remove line")
+                                remove_button = ui.button(
+                                    icon="delete", on_click=remove_line
+                                ).props("flat round dense color=negative")
+                                remove_button.props["aria-label"] = f"Remove line {index}"
+                                remove_button.tooltip("Remove line")
 
                             @ui.refreshable
                             def catalog_suggestions() -> None:
@@ -506,63 +521,83 @@ def register_intake_page() -> None:
                     update_total()
 
                 async def handle_submit() -> None:
-                    line_items, warnings = collect_line_items()
-                    work_request = (
-                        "; ".join(
-                            f"{line.description} x{line.quantity}"
-                            if line.quantity > 1
-                            else line.description
-                            for line in line_items
+                    submit_button.disable()
+                    try:
+                        line_items, warnings = collect_line_items()
+                        work_request = (
+                            "; ".join(
+                                f"{line.description} x{line.quantity}"
+                                if line.quantity > 1
+                                else line.description
+                                for line in line_items
+                            )
+                            or "No line items"
                         )
-                        or "No line items"
-                    )
-                    total_cents = sum(line.quantity * line.unit_price_cents for line in line_items)
-                    order = Order.model_construct(
-                        order_id=(
-                            existing_order.order_id if existing_order else next_order_id(event)
-                        ),
-                        timestamp=(
-                            existing_order.timestamp
-                            if existing_order
-                            else datetime.now().astimezone()
-                        ),
-                        event=event,
-                        name=name_input.value,
-                        phone=phone_input.value,
-                        work_request=work_request,
-                        cost=f"{total_cents / 100:.2f}",
-                        line_items=line_items,
-                    )
-
-                    label_path = render_label(order)
-                    saved_order = order.model_copy(update={"label_filename": label_path.name})
-                    if existing_order:
-                        update_order(saved_order)
-                    else:
-                        append_order(saved_order)
-
-                    show_warnings(warnings)
-                    status_area.clear()
-                    with status_area, ui.row().classes("items-center gap-2"):
-                        ui.label(f"Order #{saved_order.order_id} receipt")
-                        ui.button(
-                            icon="article",
-                            on_click=lambda path=label_path: open_local_path(path),
-                        ).props("flat round dense").classes("text-primary").tooltip(str(label_path))
-                        ui.button(
-                            icon="print",
-                            on_click=lambda path=label_path: print_label_image(path),
-                        ).props("flat round dense").classes("text-primary").tooltip(
-                            f"Print on {PRINTER_NAME}"
+                        total_cents = sum(
+                            line.quantity * line.unit_price_cents for line in line_items
                         )
-                    verb = "Updated" if existing_order else "Saved"
-                    update_application_status(
-                        f"{verb} order #{saved_order.order_id}", label_path.name
-                    )
-                    await print_label_image(label_path)
-                    if not existing_order:
-                        clear_form()
-                        order_title.text = f"Order #{next_order_id(event)}"
+                        order = Order.model_construct(
+                            order_id=(
+                                existing_order.order_id
+                                if existing_order
+                                else next_order_id(event)
+                            ),
+                            timestamp=(
+                                existing_order.timestamp
+                                if existing_order
+                                else datetime.now().astimezone()
+                            ),
+                            event=event,
+                            name=name_input.value,
+                            phone=phone_input.value,
+                            work_request=work_request,
+                            cost=f"{total_cents / 100:.2f}",
+                            line_items=line_items,
+                        )
+
+                        label_path = render_label(order)
+                        saved_order = order.model_copy(update={"label_filename": label_path.name})
+                        if existing_order:
+                            update_order(saved_order)
+                        else:
+                            append_order(saved_order)
+
+                        show_warnings(warnings)
+                        status_area.clear()
+                        with status_area, ui.row().classes("items-center gap-2"):
+                            ui.label(f"Order #{saved_order.order_id} receipt")
+                            receipt_button = ui.button(
+                                icon="article",
+                                on_click=lambda path=label_path: open_local_path(path),
+                            ).props("flat round dense").classes("text-primary")
+                            receipt_button.props["aria-label"] = (
+                                f"Open receipt for order {saved_order.order_id}"
+                            )
+                            receipt_button.tooltip(str(label_path))
+                            print_button = (
+                                ui.button(icon="print")
+                                .props("flat round dense")
+                                .classes("text-primary")
+                            )
+                            print_button.on_click(
+                                lambda path=label_path, button=print_button: print_receipt(
+                                    path, button
+                                )
+                            )
+                            print_button.props["aria-label"] = (
+                                f"Print receipt for order {saved_order.order_id}"
+                            )
+                            print_button.tooltip(f"Print on {PRINTER_NAME}")
+                        verb = "Updated" if existing_order else "Saved"
+                        update_application_status(
+                            f"{verb} order #{saved_order.order_id}", label_path.name
+                        )
+                        await print_label_image(label_path)
+                        if not existing_order:
+                            clear_form()
+                            order_title.text = f"Order #{next_order_id(event)}"
+                    finally:
+                        submit_button.enable()
 
                 submit_text = "Save Changes" if existing_order else "Submit Order"
                 with ui.row().classes(

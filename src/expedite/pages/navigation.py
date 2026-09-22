@@ -19,10 +19,12 @@ def event_page_header(event: Event) -> Label:
         ui.row().classes("event-header-main min-w-0 items-center gap-2"),
     ):
         title = ui.label(event.name).classes("app-page-title text-3xl font-bold")
-        ui.button(
+        folder_button = ui.button(
             icon="folder_open",
             on_click=lambda: open_local_path(event.path),
-        ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
+        ).props("flat round dense").classes("text-primary")
+        folder_button.props["aria-label"] = f"Open folder for {event.name}"
+        folder_button.tooltip(str(event.path))
     return title
 
 

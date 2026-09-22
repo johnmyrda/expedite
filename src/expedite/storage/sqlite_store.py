@@ -139,6 +139,7 @@ def save_catalog_item(
     description: str | None,
     base_price_cents: int,
     active: bool,
+    favorite: bool | None = None,
 ) -> CatalogItem:
     now = datetime.now().astimezone()
     with transaction() as session:
@@ -163,10 +164,17 @@ def save_catalog_item(
             item.active = active
             item.updated_at = now
         repository.save(item)
-        if not item.active and item.id is not None:
-            favorite = favorites.get(item.id)
-            if favorite is not None:
-                favorites.delete(favorite)
+        if item.id is not None:
+            saved_favorite = favorites.get(item.id)
+            wants_favorite = favorite if item.active else False
+            if wants_favorite is True and saved_favorite is None:
+                if len(favorites.find_all()) >= MAX_CATALOG_FAVORITES:
+                    raise ValueError(
+                        f"No more than {MAX_CATALOG_FAVORITES} catalog items can be favorited."
+                    )
+                favorites.save(CatalogFavorite(catalog_item_id=item.id))
+            elif wants_favorite is False and saved_favorite is not None:
+                favorites.delete(saved_favorite)
         session.refresh(item)
         session.expunge(item)
     return item

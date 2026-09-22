@@ -1,15 +1,16 @@
 """Events landing page."""
 
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 from nicegui import ui
 
 from expedite.config import APP_NAME, data_dir
 from expedite.local_files import open_local_path
 from expedite.models import Event
-from expedite.pages.components import (
-    application_menu,
-    application_status,
+from expedite.pages.application_shell import application_menu, application_status
+from expedite.pages.classic_ui import (
     classic_dialog,
     enable_list_keyboard,
     group_box,
@@ -18,6 +19,17 @@ from expedite.pages.components import (
 )
 from expedite.storage.events import create_event, list_events
 from expedite.theme import apply_windows_98_theme
+
+EventSortKey = Literal["name", "start_date", "folder"]
+
+
+@dataclass
+class EventsPageState:
+    """Mutable selection and sorting state for the events list."""
+
+    selected_folder: str | None = None
+    sort_key: EventSortKey = "start_date"
+    sort_descending: bool = True
 
 
 def register_events_page() -> None:
@@ -67,21 +79,19 @@ def register_events_page() -> None:
             with ui.row().classes("app-page-header w-full items-center justify-between"):
                 with ui.row().classes("items-center gap-2"):
                     ui.label(APP_NAME).classes("app-page-title text-3xl font-bold")
-                    ui.button(
+                    data_folder_button = ui.button(
                         icon="folder_open",
                         on_click=lambda: open_local_path(app_data_dir),
-                    ).props("flat round dense").classes("text-primary").tooltip(str(app_data_dir))
+                    ).props("flat round dense").classes("text-primary")
+                    data_folder_button.props["aria-label"] = "Open data folder"
+                    data_folder_button.tooltip(str(app_data_dir))
                 ui.button("New Event...", on_click=open_new_event).props("color=primary")
 
             events = list_events()
-            state: dict[str, str | bool | None] = {
-                "selected_folder": None,
-                "sort_key": "start_date",
-                "sort_descending": True,
-            }
+            state = EventsPageState()
 
             def sorted_events() -> list[Event]:
-                key = str(state["sort_key"])
+                key = state.sort_key
                 key_functions = {
                     "name": lambda event: event.name.casefold(),
                     "start_date": lambda event: event.start_date,
@@ -90,12 +100,12 @@ def register_events_page() -> None:
                 return sorted(
                     events,
                     key=key_functions[key],
-                    reverse=bool(state["sort_descending"]),
+                    reverse=state.sort_descending,
                 )
 
             def selected_event() -> Event | None:
                 return next(
-                    (event for event in events if event.folder_name() == state["selected_folder"]),
+                    (event for event in events if event.folder_name() == state.selected_folder),
                     None,
                 )
 
@@ -124,10 +134,10 @@ def register_events_page() -> None:
                     management_button.enabled = enabled
 
                 def select_event(folder_name: str) -> None:
-                    previous = state["selected_folder"]
+                    previous = state.selected_folder
                     if previous in row_elements:
                         row_elements[previous].classes(remove="is-selected")
-                    state["selected_folder"] = folder_name
+                    state.selected_folder = folder_name
                     row_elements[folder_name].classes(add="is-selected")
                     configure_toolbar()
                     events_status.refresh()
@@ -165,12 +175,12 @@ def register_events_page() -> None:
                     def event_table_contents() -> None:
                         row_elements.clear()
 
-                        def change_sort(key: str) -> None:
-                            if state["sort_key"] == key:
-                                state["sort_descending"] = not bool(state["sort_descending"])
+                        def change_sort(key: EventSortKey) -> None:
+                            if state.sort_key == key:
+                                state.sort_descending = not state.sort_descending
                             else:
-                                state["sort_key"] = key
-                                state["sort_descending"] = False
+                                state.sort_key = key
+                                state.sort_descending = False
                             event_table_contents.refresh()
 
                         with ui.element("thead"), ui.element("tr"):
@@ -182,8 +192,8 @@ def register_events_page() -> None:
                                 with ui.element("th").style(f"width: {width}"):
                                     sortable_header(
                                         heading,
-                                        active=state["sort_key"] == key,
-                                        descending=bool(state["sort_descending"]),
+                                        active=state.sort_key == key,
+                                        descending=state.sort_descending,
                                         on_click=lambda sort_key=key: change_sort(sort_key),
                                     )
                         with ui.element("tbody"):
@@ -196,7 +206,7 @@ def register_events_page() -> None:
 
                             for event in sorted_events():
                                 folder_name = event.folder_name()
-                                selected = folder_name == state["selected_folder"]
+                                selected = folder_name == state.selected_folder
                                 row = ui.element("tr").classes(
                                     "classic-list-row" + (" is-selected" if selected else "")
                                 )

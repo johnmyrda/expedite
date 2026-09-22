@@ -280,10 +280,32 @@ button.q-btn.classic-quick-add-button {
 
 .classic-list th {
   height: 28px;
-  padding: 4px 8px;
+  padding: 3px;
   overflow: hidden;
   font-size: 12px;
   text-overflow: ellipsis;
+}
+
+button.q-btn.classic-sort-header {
+  min-width: 0;
+  min-height: 22px;
+  padding: 0 5px;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+}
+
+button.q-btn.classic-sort-header:active {
+  box-shadow: none !important;
+  transform: none;
+}
+
+.classic-sort-header .q-btn__content {
+  min-width: 0;
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .classic-list td {

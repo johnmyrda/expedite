@@ -13,6 +13,7 @@ from expedite.pages.components import (
     enable_list_keyboard,
     group_box,
     labeled_field,
+    sortable_header,
     update_application_status,
 )
 from expedite.storage.sqlite_store import (
@@ -31,10 +32,12 @@ def register_catalog_page() -> None:
         apply_windows_98_theme()
         ui.page_title(f"{APP_NAME} - Catalog")
 
-        state: dict[str, int | str | None] = {
+        state: dict[str, int | str | bool | None] = {
             "filter": "",
             "selected_id": None,
             "dialog_item_id": None,
+            "sort_key": "name",
+            "sort_descending": False,
         }
 
         def visible_items() -> list[CatalogItem]:
@@ -185,6 +188,18 @@ def register_catalog_page() -> None:
                 def item_list() -> None:
                     items = visible_items()
                     favorite_ids = set(list_catalog_favorite_ids())
+                    sort_key = str(state["sort_key"])
+                    key_functions = {
+                        "favorite": lambda item: item.id in favorite_ids,
+                        "name": lambda item: item.name.casefold(),
+                        "description": lambda item: (item.description or "").casefold(),
+                        "price": lambda item: item.base_price_cents,
+                        "status": lambda item: item.active,
+                    }
+                    items.sort(
+                        key=key_functions[sort_key],
+                        reverse=bool(state["sort_descending"]),
+                    )
                     row_elements = {}
 
                     def current_item() -> CatalogItem | None:
@@ -264,6 +279,14 @@ def register_catalog_page() -> None:
                         )
                         configure_toolbar()
 
+                    def change_sort(sort_key: str) -> None:
+                        if state["sort_key"] == sort_key:
+                            state["sort_descending"] = not bool(state["sort_descending"])
+                        else:
+                            state["sort_key"] = sort_key
+                            state["sort_descending"] = False
+                        item_list.refresh()
+
                     with (
                         ui.element("div").classes("classic-list-panel"),
                         ui.element("table")
@@ -272,15 +295,20 @@ def register_catalog_page() -> None:
                     ):
                         enable_list_keyboard(catalog_table)
                         with ui.element("thead"), ui.element("tr"):
-                            for heading, width in (
-                                ("Favorite", "86px"),
-                                ("Name", "24%"),
-                                ("Description", "auto"),
-                                ("Price", "120px"),
-                                ("Status", "100px"),
+                            for heading, column_key, width in (
+                                ("Favorite", "favorite", "86px"),
+                                ("Name", "name", "24%"),
+                                ("Description", "description", "auto"),
+                                ("Price", "price", "120px"),
+                                ("Status", "status", "100px"),
                             ):
                                 with ui.element("th").style(f"width: {width}"):
-                                    ui.label(heading)
+                                    sortable_header(
+                                        heading,
+                                        active=state["sort_key"] == column_key,
+                                        descending=bool(state["sort_descending"]),
+                                        on_click=lambda key=column_key: change_sort(key),
+                                    )
                         with ui.element("tbody"):
                             if not items:
                                 with (

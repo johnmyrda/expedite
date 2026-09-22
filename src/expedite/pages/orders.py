@@ -12,6 +12,7 @@ from expedite.pages.components import (
     application_menu,
     application_status,
     enable_list_keyboard,
+    sortable_header,
     update_application_status,
 )
 from expedite.pages.navigation import event_navigation_tabs
@@ -40,7 +41,33 @@ def register_orders_page() -> None:
 
         ui.page_title(f"{event.name} - Orders")
         orders = list_order_records(event)
-        state: dict[str, int | None] = {"selected_order_id": None}
+        state: dict[str, int | str | bool | None] = {
+            "selected_order_id": None,
+            "sort_key": "order_id",
+            "sort_descending": True,
+        }
+
+        def sorted_orders() -> list[OrderRecord]:
+            def cost_value(order: OrderRecord) -> float:
+                try:
+                    return float(order.cost)
+                except (TypeError, ValueError):
+                    return 0
+
+            key = str(state["sort_key"])
+            key_functions = {
+                "order_id": lambda order: order.order_id,
+                "timestamp": lambda order: order.timestamp,
+                "name": lambda order: order.name.casefold(),
+                "phone": lambda order: order.phone,
+                "work_request": lambda order: order.work_request.casefold(),
+                "cost": cost_value,
+            }
+            return sorted(
+                orders,
+                key=key_functions[key],
+                reverse=bool(state["sort_descending"]),
+            )
 
         async def print_label_image(path: Path) -> None:
             try:
@@ -147,6 +174,14 @@ def register_orders_page() -> None:
                     ui.button("Export...", on_click=handle_export).props("flat dense")
                     configure_toolbar()
 
+                def change_sort(key: str) -> None:
+                    if state["sort_key"] == key:
+                        state["sort_descending"] = not bool(state["sort_descending"])
+                    else:
+                        state["sort_key"] = key
+                        state["sort_descending"] = False
+                    order_list.refresh()
+
                 with (
                     ui.element("div").classes("classic-list-panel"),
                     ui.element("table")
@@ -155,16 +190,21 @@ def register_orders_page() -> None:
                 ):
                     enable_list_keyboard(order_table)
                     with ui.element("thead"), ui.element("tr"):
-                        for heading, width in (
-                            ("ID", "70px"),
-                            ("Submitted", "180px"),
-                            ("Name", "180px"),
-                            ("Phone", "170px"),
-                            ("Work Request", "auto"),
-                            ("Cost", "110px"),
+                        for heading, key, width in (
+                            ("ID", "order_id", "70px"),
+                            ("Submitted", "timestamp", "180px"),
+                            ("Name", "name", "180px"),
+                            ("Phone", "phone", "170px"),
+                            ("Work Request", "work_request", "auto"),
+                            ("Cost", "cost", "110px"),
                         ):
                             with ui.element("th").style(f"width: {width}"):
-                                ui.label(heading)
+                                sortable_header(
+                                    heading,
+                                    active=state["sort_key"] == key,
+                                    descending=bool(state["sort_descending"]),
+                                    on_click=lambda sort_key=key: change_sort(sort_key),
+                                )
                     with ui.element("tbody"):
                         if not orders:
                             with (
@@ -173,7 +213,7 @@ def register_orders_page() -> None:
                             ):
                                 ui.label("No orders yet.").classes("text-gray-500")
 
-                        for order in orders:
+                        for order in sorted_orders():
                             selected = order.order_id == state["selected_order_id"]
                             row = ui.element("tr").classes(
                                 "classic-list-row" + (" is-selected" if selected else "")

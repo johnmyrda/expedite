@@ -43,12 +43,35 @@ def labeled_field(label: str, *, classes: str = "w-full") -> Iterator[None]:
         yield
 
 
+def sortable_header(
+    label: str,
+    *,
+    active: bool,
+    descending: bool,
+    on_click: Callable[[], None],
+) -> None:
+    """Render an accessible classic list header which controls sorting."""
+    indicator = " ▼" if descending else " ▲"
+    button = (
+        ui.button(f"{label}{indicator if active else ''}", on_click=on_click)
+        .props("flat dense no-caps")
+        .classes("classic-sort-header w-full")
+    )
+    direction = "descending" if descending else "ascending"
+    button.props["aria-label"] = (
+        f"Sort by {label}" if not active else f"Sort by {label}, currently {direction}"
+    )
+
+
 def enable_list_keyboard(list_element: Element) -> None:
     """Enable classic Up/Down selection and Enter activation on a list table."""
     list_element.props("tabindex=0")
     list_element.on(
         "click",
-        js_handler="(event) => event.currentTarget.focus()",
+        js_handler=(
+            "(event) => { if (event.target.closest('.classic-list-row')) "
+            "event.currentTarget.focus(); }"
+        ),
     )
     list_element.on(
         "keydown",

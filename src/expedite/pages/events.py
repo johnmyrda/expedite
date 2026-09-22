@@ -14,6 +14,7 @@ from expedite.pages.components import (
     enable_list_keyboard,
     group_box,
     labeled_field,
+    sortable_header,
 )
 from expedite.storage.events import create_event, list_events
 from expedite.theme import apply_windows_98_theme
@@ -73,7 +74,24 @@ def register_events_page() -> None:
                 ui.button("New Event...", on_click=open_new_event).props("color=primary")
 
             events = list_events()
-            state: dict[str, str | None] = {"selected_folder": None}
+            state: dict[str, str | bool | None] = {
+                "selected_folder": None,
+                "sort_key": "start_date",
+                "sort_descending": True,
+            }
+
+            def sorted_events() -> list[Event]:
+                key = str(state["sort_key"])
+                key_functions = {
+                    "name": lambda event: event.name.casefold(),
+                    "start_date": lambda event: event.start_date,
+                    "folder": lambda event: event.folder_name().casefold(),
+                }
+                return sorted(
+                    events,
+                    key=key_functions[key],
+                    reverse=bool(state["sort_descending"]),
+                )
 
             def selected_event() -> Event | None:
                 return next(
@@ -142,39 +160,62 @@ def register_events_page() -> None:
                     .props('aria-label="Recent events"') as event_table,
                 ):
                     enable_list_keyboard(event_table)
-                    with ui.element("thead"), ui.element("tr"):
-                        for heading, width in (
-                            ("Event", "40%"),
-                            ("Start Date", "180px"),
-                            ("Folder", "auto"),
-                        ):
-                            with ui.element("th").style(f"width: {width}"):
-                                ui.label(heading)
-                    with ui.element("tbody"):
-                        if not events:
-                            with (
-                                ui.element("tr"),
-                                ui.element("td").props("colspan=3"),
-                            ):
-                                ui.label("No events yet. Choose New Event... to begin.")
 
-                        for event in events:
-                            folder_name = event.folder_name()
-                            row = ui.element("tr").classes("classic-list-row")
-                            row_elements[folder_name] = row
-                            row.on(
-                                "click",
-                                lambda folder=folder_name: select_event(folder),
-                            ).on(
-                                "dblclick",
-                                lambda folder=folder_name: ui.navigate.to(f"/events/{folder}"),
-                            )
-                            with row:
-                                with ui.element("td"):
-                                    ui.label(event.name).classes("font-medium")
-                                with ui.element("td"):
-                                    ui.label(event.start_date)
-                                with ui.element("td"):
-                                    ui.label(folder_name)
+                    @ui.refreshable
+                    def event_table_contents() -> None:
+                        row_elements.clear()
+
+                        def change_sort(key: str) -> None:
+                            if state["sort_key"] == key:
+                                state["sort_descending"] = not bool(state["sort_descending"])
+                            else:
+                                state["sort_key"] = key
+                                state["sort_descending"] = False
+                            event_table_contents.refresh()
+
+                        with ui.element("thead"), ui.element("tr"):
+                            for heading, key, width in (
+                                ("Event", "name", "40%"),
+                                ("Start Date", "start_date", "180px"),
+                                ("Folder", "folder", "auto"),
+                            ):
+                                with ui.element("th").style(f"width: {width}"):
+                                    sortable_header(
+                                        heading,
+                                        active=state["sort_key"] == key,
+                                        descending=bool(state["sort_descending"]),
+                                        on_click=lambda sort_key=key: change_sort(sort_key),
+                                    )
+                        with ui.element("tbody"):
+                            if not events:
+                                with (
+                                    ui.element("tr"),
+                                    ui.element("td").props("colspan=3"),
+                                ):
+                                    ui.label("No events yet. Choose New Event... to begin.")
+
+                            for event in sorted_events():
+                                folder_name = event.folder_name()
+                                selected = folder_name == state["selected_folder"]
+                                row = ui.element("tr").classes(
+                                    "classic-list-row" + (" is-selected" if selected else "")
+                                )
+                                row_elements[folder_name] = row
+                                row.on(
+                                    "click",
+                                    lambda folder=folder_name: select_event(folder),
+                                ).on(
+                                    "dblclick",
+                                    lambda folder=folder_name: ui.navigate.to(f"/events/{folder}"),
+                                )
+                                with row:
+                                    with ui.element("td"):
+                                        ui.label(event.name).classes("font-medium")
+                                    with ui.element("td"):
+                                        ui.label(event.start_date)
+                                    with ui.element("td"):
+                                        ui.label(folder_name)
+
+                    event_table_contents()
 
             events_status()

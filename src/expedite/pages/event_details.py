@@ -10,6 +10,7 @@ from expedite.pages.components import (
     application_status,
     group_box,
     labeled_field,
+    sortable_header,
     update_application_status,
 )
 from expedite.pages.navigation import event_navigation_tabs
@@ -38,7 +39,12 @@ def register_event_details_page() -> None:
 
         event: Event = loaded_event
         ui.page_title(f"{event.name} - Manage")
-        filters = {"query": "", "pricing": "all"}
+        filters: dict[str, str | bool] = {
+            "query": "",
+            "pricing": "all",
+            "sort_key": "name",
+            "sort_descending": False,
+        }
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
             application_menu()
@@ -96,7 +102,7 @@ def register_event_details_page() -> None:
 
                 @ui.refreshable
                 def price_list() -> None:
-                    query = filters["query"].strip().casefold()
+                    query = str(filters["query"]).strip().casefold()
                     overrides = event_catalog_prices(event)
                     items = []
                     for item in list_catalog_items():
@@ -114,21 +120,53 @@ def register_event_details_page() -> None:
                         if matches_text and matches_pricing:
                             items.append(item)
 
+                    sort_key = str(filters["sort_key"])
+                    key_functions = {
+                        "name": lambda item: item.name.casefold(),
+                        "base_price": lambda item: item.base_price_cents,
+                        "event_price": lambda item: overrides.get(item.id, item.base_price_cents),
+                        "status": lambda item: (
+                            item.id in overrides,
+                            item.active,
+                            item.name.casefold(),
+                        ),
+                    }
+                    items.sort(
+                        key=key_functions[sort_key],
+                        reverse=bool(filters["sort_descending"]),
+                    )
+
+                    def change_sort(column_key: str) -> None:
+                        if filters["sort_key"] == column_key:
+                            filters["sort_descending"] = not bool(filters["sort_descending"])
+                        else:
+                            filters["sort_key"] = column_key
+                            filters["sort_descending"] = False
+                        price_list.refresh()
+
                     ui.label(f"{len(items)} item(s)").classes("text-sm text-gray-500")
                     with (
                         ui.element("div").classes("classic-list-panel"),
                         ui.element("table").classes("classic-list management-price-list"),
                     ):
                         with ui.element("thead"), ui.element("tr"):
-                            for heading, width in (
-                                ("Item", "auto"),
-                                ("Base Price", "130px"),
-                                ("Event Price", "180px"),
-                                ("Status", "150px"),
-                                ("Actions", "100px"),
+                            for heading, column_key, width in (
+                                ("Item", "name", "auto"),
+                                ("Base Price", "base_price", "130px"),
+                                ("Event Price", "event_price", "180px"),
+                                ("Status", "status", "150px"),
+                                ("Actions", None, "100px"),
                             ):
                                 with ui.element("th").style(f"width: {width}"):
-                                    ui.label(heading)
+                                    if column_key is None:
+                                        ui.label(heading)
+                                    else:
+                                        sortable_header(
+                                            heading,
+                                            active=filters["sort_key"] == column_key,
+                                            descending=bool(filters["sort_descending"]),
+                                            on_click=lambda key=column_key: change_sort(key),
+                                        )
                         with ui.element("tbody"):
                             if not items:
                                 with (

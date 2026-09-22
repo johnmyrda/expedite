@@ -234,14 +234,14 @@ textarea,
 
 .classic-quick-add-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
 }
 
 button.q-btn.classic-quick-add-button {
-  min-height: 38px;
-  padding-right: 10px;
-  padding-left: 10px;
+  min-height: 30px;
+  padding: 0 7px;
+  font-size: 12px !important;
   text-align: left;
 }
 
@@ -264,6 +264,7 @@ button.q-btn.order-submit-button .q-icon {
   min-width: 0;
   justify-content: flex-start;
   overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -798,15 +799,15 @@ img.rounded {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .classic-quick-add-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 700px) {
   .classic-quick-add-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .app-page {
@@ -862,6 +863,10 @@ img.rounded {
 }
 
 @media (max-width: 480px) {
+  .classic-quick-add-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   button.q-btn.order-submit-button {
     width: 100%;
   }

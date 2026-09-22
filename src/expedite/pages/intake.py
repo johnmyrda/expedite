@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from textwrap import shorten
 
 from nicegui import events, run, ui
 
@@ -33,6 +34,18 @@ from expedite.storage.sqlite_store import (
 )
 from expedite.theme import apply_windows_98_theme
 from expedite.validation import validate_name, validate_phone
+
+_QUICK_ADD_LABELS = {
+    "Buttons and Sticks": "Buttons + Sticks",
+    "Phob Conversion": "Phob",
+    "Snapback Module": "Snapback",
+    "Tactile Z (3rd party)": "Tactile Z (3P)",
+}
+
+
+def quick_add_label(name: str) -> str:
+    """Return a compact display label without changing the catalog item name."""
+    return _QUICK_ADD_LABELS.get(name, shorten(name, width=20, placeholder="…"))
 
 
 @dataclass
@@ -234,8 +247,11 @@ def register_intake_page() -> None:
                             ) -> None:
                                 add_favorite_item(selected_id)
 
-                            button_text = f"{favorite_item.name} — {display_price(favorite_price)}"
-                            alt_text = f"{description} · Cost: {display_price(favorite_price)}"
+                            button_text = quick_add_label(favorite_item.name)
+                            alt_text = (
+                                f"{favorite_item.name} · {description} · "
+                                f"Cost: {display_price(favorite_price)}"
+                            )
                             favorite_button = (
                                 ui.button(button_text, on_click=add_selected_favorite)
                                 .props("flat no-caps align=left")

@@ -14,6 +14,7 @@ from expedite.money import display_price, parse_price_cents
 from expedite.pages.components import (
     application_menu,
     application_status,
+    classic_dialog,
     group_box,
     labeled_field,
 )
@@ -278,12 +279,23 @@ def register_intake_page() -> None:
                                     for item_id, name in catalog_options.items()
                                     if item_id
                                 }
-                                with (
-                                    ui.dialog() as full_catalog_dialog,
-                                    ui.card().classes("w-full max-w-xl"),
-                                ):
-                                    ui.label("Select Catalog Item").classes("text-lg font-semibold")
-                                    with labeled_field("Catalog item"):
+
+                                def select_from_full_catalog() -> None:
+                                    selected = (
+                                        int(full_select.value)
+                                        if full_select.value is not None
+                                        else None
+                                    )
+                                    full_catalog_dialog.close()
+                                    choose_catalog_item(selected)
+
+                                with classic_dialog(
+                                    "Select Catalog Item",
+                                    accept_label="Select",
+                                    on_accept=select_from_full_catalog,
+                                    width="560px",
+                                ) as full_catalog_dialog:
+                                    with group_box("Catalog"), labeled_field("Catalog item"):
                                         full_select = (
                                             ui.select(
                                                 full_options,
@@ -293,25 +305,7 @@ def register_intake_page() -> None:
                                             .props("outlined options-dense")
                                             .classes("w-full")
                                         )
-
-                                    def select_from_full_catalog() -> None:
-                                        selected = (
-                                            int(full_select.value)
-                                            if full_select.value is not None
-                                            else None
-                                        )
-                                        full_catalog_dialog.close()
-                                        choose_catalog_item(selected)
-
-                                    with ui.row().classes("gap-2"):
-                                        ui.button(
-                                            "Select",
-                                            on_click=select_from_full_catalog,
-                                        ).props("color=primary")
-                                        ui.button(
-                                            icon="cancel",
-                                            on_click=full_catalog_dialog.close,
-                                        ).props("flat round").tooltip("Cancel")
+                                    full_catalog_dialog.set_initial_focus(full_select)
 
                                 ui.button(
                                     icon="expand_circle_down",

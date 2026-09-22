@@ -5,6 +5,12 @@ from nicegui.elements.input import Input
 
 from expedite.models import Event
 from expedite.money import display_price, parse_price_cents
+from expedite.pages.components import (
+    application_menu,
+    application_status,
+    group_box,
+    labeled_field,
+)
 from expedite.pages.navigation import event_navigation_tabs
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
@@ -23,8 +29,10 @@ def register_event_details_page() -> None:
         loaded_event = get_event(folder_name)
         if loaded_event is None:
             with ui.column().classes("app-page w-full p-6 gap-4"):
+                application_menu()
                 ui.label("Event not found").classes("text-2xl font-bold text-negative")
                 ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
+                application_status("Event not found")
             return
 
         event: Event = loaded_event
@@ -32,27 +40,24 @@ def register_event_details_page() -> None:
         filters = {"query": "", "pricing": "all"}
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
+            application_menu()
             with ui.row().classes("app-page-header w-full items-center justify-between"):
                 title = ui.label(f"Manage {event.name}").classes(
                     "app-page-title text-3xl font-bold"
                 )
-                ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
 
             event_navigation_tabs(folder_name, "management")
 
-            with ui.card().classes("w-full"):
-                ui.label("Event Details").classes("text-xl font-semibold")
+            with group_box("Event Details"):
                 with ui.row().classes("w-full items-end gap-3 flex-wrap"):
-                    name_input = (
-                        ui.input("Event name", value=event.name)
-                        .props("outlined")
-                        .classes("grow min-w-64")
-                    )
-                    date_input = (
-                        ui.input("Start date", value=event.start_date)
-                        .props("outlined type=date")
-                        .classes("w-48")
-                    )
+                    with labeled_field("Event name", classes="grow min-w-64"):
+                        name_input = ui.input(value=event.name).props("outlined").classes("w-full")
+                    with labeled_field("Start date", classes="w-48"):
+                        date_input = (
+                            ui.input(value=event.start_date)
+                            .props("outlined type=date")
+                            .classes("w-full")
+                        )
 
                     def save_details() -> None:
                         nonlocal event
@@ -69,17 +74,13 @@ def register_event_details_page() -> None:
 
                     ui.button("Save Details", on_click=save_details).props("color=primary")
 
-            with ui.card().classes("w-full"):
-                ui.label("Catalog Price Overrides").classes("text-xl font-semibold")
+            with group_box("Catalog Price Overrides"):
                 ui.label("Leave an event price blank to use the catalog base price.").classes(
                     "text-sm text-gray-500"
                 )
                 with ui.row().classes("w-full items-center gap-3 flex-wrap"):
-                    filter_input = (
-                        ui.input("Filter by name or description")
-                        .props("outlined clearable prepend-icon=search")
-                        .classes("grow min-w-64")
-                    )
+                    with labeled_field("Filter by name or description", classes="grow min-w-64"):
+                        filter_input = ui.input().props("outlined clearable").classes("w-full")
                     pricing_filter = ui.toggle(
                         {
                             "all": "All",
@@ -132,16 +133,18 @@ def register_event_details_page() -> None:
                                 ui.label(f"Base: {display_price(item.base_price_cents)}").classes(
                                     "w-32 text-sm text-gray-600"
                                 )
-                                price_input = (
-                                    ui.input(
-                                        "Event price",
-                                        value=(
-                                            f"{override / 100:.2f}" if override is not None else ""
-                                        ),
+                                with labeled_field("Event price", classes="w-40"):
+                                    price_input = (
+                                        ui.input(
+                                            value=(
+                                                f"{override / 100:.2f}"
+                                                if override is not None
+                                                else ""
+                                            ),
+                                        )
+                                        .props("outlined dense prefix=$ inputmode=decimal")
+                                        .classes("w-full")
                                     )
-                                    .props("outlined dense prefix=$ inputmode=decimal")
-                                    .classes("w-40")
-                                )
 
                                 def save_override(
                                     catalog_item_id: int | None = item.id,
@@ -200,3 +203,5 @@ def register_event_details_page() -> None:
                 filter_input.on_value_change(handle_filter_change)
                 pricing_filter.on_value_change(handle_pricing_filter_change)
                 price_list()
+
+            application_status("Ready", event.name)

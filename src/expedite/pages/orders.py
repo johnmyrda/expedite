@@ -7,6 +7,7 @@ from nicegui import run, ui
 
 from expedite.config import PRINTER_NAME
 from expedite.local_files import open_local_path
+from expedite.pages.components import application_menu, application_status
 from expedite.pages.navigation import event_navigation_tabs
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
@@ -25,8 +26,10 @@ def register_orders_page() -> None:
         event = get_event(folder_name)
         if event is None:
             with ui.column().classes("app-page w-full p-6 gap-4"):
+                application_menu()
                 ui.label("Event not found").classes("text-2xl font-bold text-negative")
                 ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
+                application_status("Event not found")
             return
 
         ui.page_title(f"{event.name} - Orders")
@@ -40,7 +43,12 @@ def register_orders_page() -> None:
             else:
                 ui.notify(f"Sent label to {printer_name}", type="positive")
 
+        def handle_export() -> None:
+            path = export_orders_csv(event)
+            ui.notify(f"Exported orders to {path.name}", type="positive")
+
         with ui.column().classes("app-page w-full p-6 gap-6"):
+            application_menu(on_export=handle_export)
             with ui.row().classes("app-page-header w-full items-center justify-between"):
                 with ui.row().classes("items-center gap-2"):
                     ui.label(f"{event.name} Orders").classes("app-page-title text-3xl font-bold")
@@ -48,69 +56,69 @@ def register_orders_page() -> None:
                         icon="folder_open",
                         on_click=lambda: open_local_path(event.path),
                     ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
-                with ui.row().classes("gap-2"):
-
-                    def handle_export() -> None:
-                        path = export_orders_csv(event)
-                        ui.notify(f"Exported orders to {path.name}", type="positive")
-
-                    ui.button(
-                        "Export to CSV",
-                        icon="download",
-                        on_click=handle_export,
-                    ).props("flat")
-                    ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
 
             event_navigation_tabs(event.folder_name(), "orders")
 
-            if not orders:
-                with ui.card().classes("w-full"):
-                    ui.label("No orders yet.").classes("text-gray-500")
-                return
+            with ui.element("div").classes("classic-list-panel"):
+                with ui.element("table").classes("classic-list order-list"):
+                    with ui.element("thead"):
+                        with ui.element("tr"):
+                            for heading, width in (
+                                ("ID", "70px"),
+                                ("Submitted", "170px"),
+                                ("Name", "150px"),
+                                ("Phone", "150px"),
+                                ("Work Request", "auto"),
+                                ("Cost", "90px"),
+                                ("Actions", "220px"),
+                            ):
+                                with ui.element("th").style(f"width: {width}"):
+                                    ui.label(heading)
+                    with ui.element("tbody"):
+                        if not orders:
+                            with ui.element("tr"):
+                                with ui.element("td").props("colspan=7"):
+                                    ui.label("No orders yet.").classes("text-gray-500")
 
-            with ui.card().classes("w-full"):
-                ui.label(f"{len(orders)} order(s)").classes("text-xl font-semibold")
-                with ui.row().classes("w-full font-semibold border-b pb-2 items-center text-sm"):
-                    ui.label("ID").classes("w-16")
-                    ui.label("Submitted").classes("w-44")
-                    ui.label("Name").classes("w-40")
-                    ui.label("Phone").classes("w-40")
-                    ui.label("Work Request").classes("grow")
-                    ui.label("Cost").classes("w-24")
-                    ui.label("Label").classes("w-24")
+                        for order in orders:
+                            label_filename = order.label_filename or ""
+                            label_path = event.path / "labels" / label_filename
+                            with ui.element("tr"):
+                                with ui.element("td"):
+                                    ui.label(str(order.order_id))
+                                with ui.element("td"):
+                                    ui.label(display_timestamp(order.timestamp))
+                                with ui.element("td"):
+                                    ui.label(order.name)
+                                with ui.element("td"):
+                                    ui.label(order.phone)
+                                with ui.element("td"):
+                                    ui.label(order.work_request)
+                                with ui.element("td"):
+                                    ui.label(order.cost)
+                                with ui.element("td").classes("classic-actions"):
+                                    with ui.row().classes("gap-1 items-center"):
+                                        ui.button(
+                                            "Edit...",
+                                            on_click=lambda order_id=order.order_id: ui.navigate.to(
+                                                f"/events/{event.folder_name()}/orders/"
+                                                f"{order_id}/edit"
+                                            ),
+                                        ).props("flat dense")
+                                        if label_filename:
+                                            ui.button(
+                                                "Open",
+                                                on_click=lambda path=label_path: open_local_path(
+                                                    path
+                                                ),
+                                            ).props("flat dense").tooltip(str(label_path))
+                                            ui.button(
+                                                "Print",
+                                                on_click=lambda path=label_path: print_label_image(
+                                                    path
+                                                ),
+                                            ).props("flat dense").tooltip(
+                                                f"Print on {PRINTER_NAME}"
+                                            )
 
-                for order in orders:
-                    label_filename = order.label_filename or ""
-                    label_path = event.path / "labels" / label_filename
-                    with ui.row().classes("w-full border-b py-2 items-center text-sm gap-2"):
-                        with ui.row().classes("w-16 items-center gap-1"):
-                            ui.label(str(order.order_id))
-                            ui.button(
-                                icon="edit",
-                                on_click=lambda order_id=order.order_id: ui.navigate.to(
-                                    f"/events/{event.folder_name()}/orders/{order_id}/edit"
-                                ),
-                            ).props("flat round dense").classes("text-primary").tooltip(
-                                "Edit order"
-                            )
-                        ui.label(display_timestamp(order.timestamp)).classes("w-44")
-                        ui.label(order.name).classes("w-40")
-                        ui.label(order.phone).classes("w-40")
-                        ui.label(order.work_request).classes("grow")
-                        ui.label(order.cost).classes("w-24")
-                        with ui.row().classes("w-24 gap-0"):
-                            if label_filename:
-                                ui.button(
-                                    icon="article",
-                                    on_click=lambda path=label_path: open_local_path(path),
-                                ).props("flat round dense").classes("text-primary").tooltip(
-                                    str(label_path)
-                                )
-                                ui.button(
-                                    icon="print",
-                                    on_click=lambda path=label_path: print_label_image(path),
-                                ).props("flat round dense").classes("text-primary").tooltip(
-                                    f"Print on {PRINTER_NAME}"
-                                )
-                            else:
-                                ui.label("—").classes("text-gray-400")
+            application_status("Ready", f"{len(orders)} order(s)")

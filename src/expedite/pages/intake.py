@@ -11,6 +11,12 @@ from expedite.label import render_label
 from expedite.local_files import open_local_path
 from expedite.models import Order, OrderLine
 from expedite.money import display_price, parse_price_cents
+from expedite.pages.components import (
+    application_menu,
+    application_status,
+    group_box,
+    labeled_field,
+)
 from expedite.pages.navigation import event_navigation_tabs
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
@@ -40,8 +46,10 @@ class LineDraft:
 def register_intake_page() -> None:
     def show_event_not_found() -> None:
         with ui.column().classes("app-page w-full p-6 gap-4"):
+            application_menu()
             ui.label("Event not found").classes("text-2xl font-bold text-negative")
             ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
+            application_status("Event not found")
 
     def render_intake_page(folder_name: str, edit_order_id: int | None = None) -> None:
         apply_windows_98_theme()
@@ -53,6 +61,7 @@ def register_intake_page() -> None:
         existing_order = get_order(event, edit_order_id) if edit_order_id else None
         if edit_order_id is not None and existing_order is None:
             with ui.column().classes("app-page w-full p-6 gap-4"):
+                application_menu()
                 ui.label(f"Order #{edit_order_id} not found").classes(
                     "text-2xl font-bold text-negative"
                 )
@@ -60,6 +69,7 @@ def register_intake_page() -> None:
                     "Back to Orders",
                     on_click=lambda: ui.navigate.to(f"/events/{folder_name}/orders"),
                 )
+                application_status("Order not found")
             return
 
         catalog = list_catalog_items()
@@ -114,6 +124,7 @@ def register_intake_page() -> None:
                 ui.notify(f"Sent label to {printer_name}", type="positive")
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
+            application_menu()
             with ui.row().classes("app-page-header w-full items-center justify-between"):
                 with ui.row().classes("items-center gap-2"):
                     ui.label(event.name).classes("app-page-title text-3xl font-bold")
@@ -121,7 +132,6 @@ def register_intake_page() -> None:
                         icon="folder_open",
                         on_click=lambda: open_local_path(event.path),
                     ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
-                ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
 
             event_navigation_tabs(event.folder_name(), "intake")
 
@@ -132,7 +142,7 @@ def register_intake_page() -> None:
                 )
                 warning_list = ui.column().classes("gap-1")
 
-            with ui.card().classes("w-full"):
+            with group_box("Order Intake"):
                 current_order_id = (
                     existing_order.order_id if existing_order else next_order_id(event)
                 )
@@ -140,24 +150,25 @@ def register_intake_page() -> None:
                 order_title = ui.label(f"{title_prefix} #{current_order_id}").classes(
                     "text-xl font-semibold"
                 )
-                name_input = (
-                    ui.input(
-                        "Name",
-                        value=existing_order.name if existing_order else "",
-                        validation=validate_name,
-                    )
-                    .props("outlined debounce=2000")
-                    .classes("w-full")
-                )
-                phone_input = (
-                    ui.input(
-                        "Phone",
-                        value=existing_order.phone if existing_order else "",
-                        validation=validate_phone,
-                    )
-                    .props("outlined debounce=2000")
-                    .classes("w-full")
-                )
+                with group_box("Customer Information"):
+                    with labeled_field("Name"):
+                        name_input = (
+                            ui.input(
+                                value=existing_order.name if existing_order else "",
+                                validation=validate_name,
+                            )
+                            .props("outlined debounce=2000")
+                            .classes("w-full")
+                        )
+                    with labeled_field("Phone"):
+                        phone_input = (
+                            ui.input(
+                                value=existing_order.phone if existing_order else "",
+                                validation=validate_phone,
+                            )
+                            .props("outlined debounce=2000")
+                            .classes("w-full")
+                        )
 
                 ui.separator()
                 with ui.row().classes("w-full items-center justify-between"):
@@ -240,17 +251,17 @@ def register_intake_page() -> None:
                             update_total()
 
                         with ui.card().classes("w-full bg-gray-50"):
-                            with ui.row().classes("w-full items-center gap-2 flex-wrap"):
-                                ui.label(f"#{index}").classes("font-medium w-8")
-                                catalog_input = (
-                                    ui.input(
-                                        "Item / description",
-                                        value=line.description,
-                                        placeholder="Type to search or enter a custom item",
+                            with ui.row().classes("w-full items-end gap-2 flex-wrap"):
+                                ui.label(f"#{index}").classes("font-medium w-8 pb-2")
+                                with labeled_field("Item / description", classes="grow min-w-56"):
+                                    catalog_input = (
+                                        ui.input(
+                                            value=line.description,
+                                            placeholder="Type to search or enter a custom item",
+                                        )
+                                        .props("outlined dense autocomplete=off")
+                                        .classes("w-full")
                                     )
-                                    .props("outlined dense autocomplete=off")
-                                    .classes("grow min-w-56")
-                                )
 
                                 def catalog_option_label(item_id: int, name: str) -> str:
                                     item = catalog_by_id[item_id]
@@ -267,16 +278,16 @@ def register_intake_page() -> None:
                                     ui.card().classes("w-full max-w-xl"),
                                 ):
                                     ui.label("Select Catalog Item").classes("text-lg font-semibold")
-                                    full_select = (
-                                        ui.select(
-                                            full_options,
-                                            value=line.catalog_item_id,
-                                            label="Catalog item",
-                                            with_input=True,
+                                    with labeled_field("Catalog item"):
+                                        full_select = (
+                                            ui.select(
+                                                full_options,
+                                                value=line.catalog_item_id,
+                                                with_input=True,
+                                            )
+                                            .props("outlined options-dense")
+                                            .classes("w-full")
                                         )
-                                        .props("outlined options-dense")
-                                        .classes("w-full")
-                                    )
 
                                     def select_from_full_catalog() -> None:
                                         selected = (
@@ -302,21 +313,22 @@ def register_intake_page() -> None:
                                     on_click=full_catalog_dialog.open,
                                 ).props("flat round dense").tooltip("Browse full catalog")
 
-                                quantity_input = (
-                                    ui.number(
-                                        "Qty",
-                                        value=line.quantity,
-                                        min=1,
-                                        step=1,
+                                with labeled_field("Quantity", classes="w-24"):
+                                    quantity_input = (
+                                        ui.number(
+                                            value=line.quantity,
+                                            min=1,
+                                            step=1,
+                                        )
+                                        .props("outlined dense")
+                                        .classes("w-full")
                                     )
-                                    .props("outlined dense")
-                                    .classes("w-24")
-                                )
-                                price_input = (
-                                    ui.input("Unit price", value=line.unit_price)
-                                    .props("outlined dense prefix=$ inputmode=decimal")
-                                    .classes("w-36")
-                                )
+                                with labeled_field("Unit price", classes="w-36"):
+                                    price_input = (
+                                        ui.input(value=line.unit_price)
+                                        .props("outlined dense prefix=$ inputmode=decimal")
+                                        .classes("w-full")
+                                    )
 
                                 if not line.notes and not line.show_notes:
 
@@ -376,11 +388,12 @@ def register_intake_page() -> None:
 
                             notes_input = None
                             if line.notes or line.show_notes:
-                                notes_input = (
-                                    ui.input("Notes", value=line.notes)
-                                    .props("outlined dense")
-                                    .classes("w-full")
-                                )
+                                with labeled_field("Notes"):
+                                    notes_input = (
+                                        ui.input(value=line.notes)
+                                        .props("outlined dense")
+                                        .classes("w-full")
+                                    )
 
                             def search_catalog(
                                 change: events.ValueChangeEventArguments[str | None],
@@ -550,7 +563,13 @@ def register_intake_page() -> None:
                         order_title.text = f"Order #{next_order_id(event)}"
 
                 submit_text = "Save Changes" if existing_order else "Submit Order"
-                ui.button(submit_text, on_click=handle_submit).props("color=primary size=lg")
+                with ui.row().classes("w-full justify-end"):
+                    ui.button(submit_text, on_click=handle_submit).props("color=primary size=lg")
+
+            status_detail = (
+                f"Editing order #{existing_order.order_id}" if existing_order else "New order"
+            )
+            application_status("Ready", status_detail)
 
     @ui.page("/events/{folder_name}")
     def intake_page(folder_name: str) -> None:

@@ -53,6 +53,54 @@ body,
   overflow-x: auto;
 }
 
+.app-menu-bar {
+  width: calc(100% + 32px) !important;
+  min-height: 28px;
+  margin: -16px -16px 0 !important;
+  padding: 2px 6px;
+  background: var(--win98-surface);
+  box-shadow: inset 0 -1px var(--win98-shadow), inset 0 -2px var(--win98-highlight);
+}
+
+.app-menu-bar .q-btn,
+.app-menu-bar .q-btn-dropdown {
+  min-width: 0 !important;
+  min-height: 23px !important;
+  padding: 0 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-menu-bar .q-btn:hover,
+.app-menu-bar .q-btn-dropdown:hover {
+  box-shadow: var(--win98-raised) !important;
+}
+
+.app-menu-bar .q-btn-dropdown__arrow {
+  display: none !important;
+}
+
+.app-status-bar {
+  width: calc(100% + 32px) !important;
+  min-height: 24px;
+  margin: auto -16px -16px !important;
+  padding: 3px 4px;
+  background: var(--win98-surface);
+  box-shadow: inset 0 1px var(--win98-highlight);
+}
+
+.app-status-bar .status-bar-field {
+  min-width: 140px;
+  padding: 3px 6px;
+  box-shadow: inset -1px -1px var(--win98-highlight), inset 1px 1px var(--win98-shadow);
+  font-size: 12px;
+}
+
+.app-status-bar .status-bar-field:last-child:not(:first-child) {
+  width: 220px;
+  flex-grow: 0;
+}
+
 .app-page-header {
   min-height: 42px;
   padding: 0 0 10px !important;
@@ -67,6 +115,89 @@ body,
   font-weight: 600 !important;
   line-height: 30px !important;
   letter-spacing: 0;
+}
+
+.classic-group {
+  min-width: 0;
+  padding: 14px 16px 16px;
+  background: var(--win98-surface);
+}
+
+.classic-group-legend {
+  padding: 0 5px;
+  background: var(--win98-surface);
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.classic-group-legend .q-label,
+.classic-group-legend > div {
+  display: inline;
+}
+
+.classic-field {
+  min-width: 0;
+}
+
+.classic-field-label {
+  color: #222;
+  font-size: 12px;
+}
+
+.classic-field .q-input:not(.q-textarea) .q-field__control,
+.classic-field .q-select .q-field__control {
+  height: 34px;
+  min-height: 34px;
+}
+
+.classic-field .q-input:not(.q-textarea) .q-field__marginal,
+.classic-field .q-select .q-field__marginal {
+  height: 34px;
+}
+
+.classic-field .q-textarea .q-field__control {
+  min-height: 70px;
+}
+
+.classic-list-panel {
+  width: 100%;
+  overflow: auto;
+  background: white;
+  box-shadow: var(--win98-sunken);
+}
+
+.classic-list {
+  width: 100%;
+  min-width: 760px;
+  table-layout: fixed;
+  background: white;
+}
+
+.classic-list th {
+  height: 28px;
+  padding: 4px 8px;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+
+.classic-list td {
+  height: 34px;
+  padding: 5px 8px;
+  overflow: hidden;
+  border-bottom: 1px solid #d0d0d0;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.classic-list tbody tr:hover td {
+  background: #efefef;
+}
+
+.classic-list .classic-actions {
+  overflow: visible;
+  white-space: nowrap;
 }
 
 .event-tabs {
@@ -380,5 +511,16 @@ img.rounded {
 @media (max-width: 700px) {
   .app-page {
     padding: 8px !important;
+  }
+
+  .app-menu-bar,
+  .app-status-bar {
+    width: calc(100% + 16px) !important;
+    margin-right: -8px !important;
+    margin-left: -8px !important;
+  }
+
+  .app-status-bar {
+    margin-bottom: -8px !important;
   }
 }

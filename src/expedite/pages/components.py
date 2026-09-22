@@ -49,7 +49,6 @@ class ClassicDialog:
 
     element: Dialog
     default_button: Button | None = None
-    apply_button: Button | None = None
     initial_focus: Element | None = None
 
     def set_initial_focus(self, element: Element) -> None:
@@ -86,9 +85,7 @@ def classic_dialog(
     *,
     accept_label: str = "OK",
     cancel_label: str | None = "Cancel",
-    apply_label: str = "Apply",
     on_accept: Callable[[], object] | None = None,
-    on_apply: Callable[[], object] | None = None,
     width: str = "520px",
 ) -> Iterator[ClassicDialog]:
     """Render a classic modal with standard action placement and keyboard behavior."""
@@ -120,8 +117,6 @@ def classic_dialog(
             )
             if cancel_label is not None:
                 ui.button(cancel_label, on_click=dialog.close).props("flat")
-            if on_apply is not None:
-                controller.apply_button = ui.button(apply_label, on_click=on_apply).props("flat")
 
         card.on(
             "keydown",
@@ -176,7 +171,7 @@ def receipt_settings_dialog() -> Callable[[], None]:
         value = min(max(current + amount, 0), MAX_LABEL_NOTES_HEIGHT_MM)
         notes_height_input.value = int(value) if value.is_integer() else value
 
-    def save_settings(*, close: bool) -> None:
+    def save_settings() -> None:
         name = (receipt_name_input.value or "").strip()
         if not name:
             ui.notify("Receipt name cannot be empty.", type="negative")
@@ -194,13 +189,11 @@ def receipt_settings_dialog() -> Callable[[], None]:
             notes_height_input.run_method("focus")
             return
         update_application_status("Receipt settings saved", name)
-        if close:
-            settings_dialog.close()
+        settings_dialog.close()
 
     with classic_dialog(
         "Receipt Settings",
-        on_accept=lambda: save_settings(close=True),
-        on_apply=lambda: save_settings(close=False),
+        on_accept=save_settings,
         width="600px",
     ) as settings_dialog:
         with group_box("General"):

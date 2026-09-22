@@ -72,7 +72,7 @@ def register_catalog_page() -> None:
         def focus(element: Element) -> None:
             ui.timer(0.05, lambda: element.run_method("focus"), once=True)
 
-        def save_dialog(*, close: bool) -> None:
+        def save_dialog() -> None:
             name = (name_input.value or "").strip()
             if not name:
                 ui.notify("Name is required.", type="negative")
@@ -118,13 +118,11 @@ def register_catalog_page() -> None:
             state["dialog_item_id"] = saved.id
             refresh_catalog()
             update_application_status("Catalog item saved", saved.name)
-            if close:
-                item_dialog.close()
+            item_dialog.close()
 
         with classic_dialog(
             "Catalog Item Properties",
-            on_accept=lambda: save_dialog(close=True),
-            on_apply=lambda: save_dialog(close=False),
+            on_accept=save_dialog,
             width="560px",
         ) as item_dialog:
             with group_box("General"):
@@ -171,8 +169,6 @@ def register_catalog_page() -> None:
             active_input.value = item.active if item is not None else True
             favorite_input.value = item is not None and item.id in set(list_catalog_favorite_ids())
             configure_favorite_input()
-            if item_dialog.apply_button is not None:
-                item_dialog.apply_button.set_visibility(item is not None)
             item_dialog.open()
 
         with ui.column().classes("app-page w-full p-6 gap-6"):

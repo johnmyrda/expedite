@@ -308,9 +308,9 @@ def register_intake_page() -> None:
                                     full_catalog_dialog.set_initial_focus(full_select)
 
                                 ui.button(
-                                    icon="expand_circle_down",
+                                    icon="search",
                                     on_click=full_catalog_dialog.open,
-                                ).props("flat round dense").tooltip("Browse full catalog")
+                                ).props("flat round dense").tooltip("Search catalog")
 
                                 with labeled_field("Quantity", classes="w-24"):
                                     quantity_input = (

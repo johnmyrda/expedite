@@ -125,13 +125,15 @@ def register_intake_page() -> None:
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
             application_menu()
-            with ui.row().classes("app-page-header w-full items-center justify-between"):
-                with ui.row().classes("items-center gap-2"):
-                    ui.label(event.name).classes("app-page-title text-3xl font-bold")
-                    ui.button(
-                        icon="folder_open",
-                        on_click=lambda: open_local_path(event.path),
-                    ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
+            with (
+                ui.row().classes("app-page-header w-full items-center justify-between"),
+                ui.row().classes("items-center gap-2"),
+            ):
+                ui.label(event.name).classes("app-page-title text-3xl font-bold")
+                ui.button(
+                    icon="folder_open",
+                    on_click=lambda: open_local_path(event.path),
+                ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
 
             event_navigation_tabs(event.folder_name(), "intake")
 
@@ -212,8 +214,10 @@ def register_intake_page() -> None:
                     update_total()
 
                 if favorite_items:
-                    ui.label("Favorites").classes("text-sm font-medium text-gray-600")
-                    with ui.row().classes("w-full gap-1 flex-wrap"):
+                    with (
+                        group_box("Quick Add"),
+                        ui.element("div").classes("classic-quick-add-grid w-full"),
+                    ):
                         for favorite_item in favorite_items:
                             favorite_id = favorite_item.id
                             if favorite_id is None:
@@ -228,14 +232,15 @@ def register_intake_page() -> None:
                             ) -> None:
                                 add_favorite_item(selected_id)
 
+                            button_text = f"{favorite_item.name} — {display_price(favorite_price)}"
                             alt_text = f"{description} · Cost: {display_price(favorite_price)}"
-                            favorite_chip = ui.chip(
-                                favorite_item.name,
-                                color="primary",
-                                on_click=add_selected_favorite,
-                            ).props("outline square")
-                            favorite_chip.props["aria-label"] = alt_text
-                            favorite_chip.tooltip(alt_text)
+                            favorite_button = (
+                                ui.button(button_text, on_click=add_selected_favorite)
+                                .props("flat no-caps align=left")
+                                .classes("classic-quick-add-button w-full")
+                            )
+                            favorite_button.props["aria-label"] = alt_text
+                            favorite_button.tooltip(alt_text)
 
                 @ui.refreshable
                 def line_editor() -> None:

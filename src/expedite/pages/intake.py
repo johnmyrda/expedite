@@ -158,7 +158,10 @@ def register_intake_page() -> None:
                 order_title = ui.label(f"{title_prefix} #{current_order_id}").classes(
                     "text-xl font-semibold"
                 )
-                with group_box("Customer Information"):
+                with (
+                    group_box("Customer Information"),
+                    ui.element("div").classes("intake-customer-fields w-full"),
+                ):
                     with labeled_field("Name"):
                         name_input = (
                             ui.input(

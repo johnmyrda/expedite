@@ -1,4 +1,20 @@
 /* NiceGUI/Quasar compatibility layer for the vendored 98.css design system. */
+@font-face {
+  font-family: "Expedite Tahoma";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local("Tahoma"), url("wine_tahoma.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Expedite Tahoma";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local("Tahoma Bold"), url("wine_tahoma_bold.ttf") format("truetype");
+}
+
 :root {
   --win98-surface: #c0c0c0;
   --win98-face: #dfdfdf;
@@ -22,6 +38,14 @@ body,
 }
 
 body,
+button,
+input,
+label,
+legend,
+option,
+select,
+table,
+textarea,
 .q-card,
 .q-btn,
 .q-field,
@@ -30,8 +54,8 @@ body,
 .q-item,
 .q-notification,
 .q-tooltip {
-  font-family: "Pixelated MS Sans Serif", Tahoma, Arial, sans-serif !important;
-  -webkit-font-smoothing: none;
+  font-family: "Expedite Tahoma", Tahoma, "Microsoft Sans Serif", Arial, sans-serif !important;
+  -webkit-font-smoothing: auto;
 }
 
 .nicegui-content {
@@ -116,7 +140,7 @@ body,
 
 .app-page-title {
   color: #111 !important;
-  font-family: "Pixelated MS Sans Serif", Tahoma, Arial, sans-serif !important;
+  font-family: "Expedite Tahoma", Tahoma, "Microsoft Sans Serif", Arial, sans-serif !important;
   font-size: 24px !important;
   font-weight: 600 !important;
   line-height: 30px !important;
@@ -262,7 +286,7 @@ body,
   background: var(--win98-face);
   border-radius: 0 !important;
   box-shadow: var(--win98-raised);
-  font-family: "Pixelated MS Sans Serif", Tahoma, Arial, sans-serif !important;
+  font-family: "Expedite Tahoma", Tahoma, "Microsoft Sans Serif", Arial, sans-serif !important;
   font-size: 13px;
   text-transform: none;
 }
@@ -381,7 +405,7 @@ button.q-btn.q-btn--dense:not(.q-btn--round) {
   border: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  font-family: "Pixelated MS Sans Serif", Tahoma, Arial, sans-serif !important;
+  font-family: "Expedite Tahoma", Tahoma, "Microsoft Sans Serif", Arial, sans-serif !important;
   font-size: 13px !important;
   line-height: normal !important;
 }

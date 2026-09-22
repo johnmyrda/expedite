@@ -1,6 +1,7 @@
 """Reusable classic desktop UI components."""
 
 import base64
+import json
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -192,7 +193,7 @@ def receipt_settings_dialog() -> Callable[[], None]:
             ui.notify(str(error), type="negative")
             notes_height_input.run_method("focus")
             return
-        ui.notify("Receipt settings saved", type="positive")
+        update_application_status("Receipt settings saved", name)
         if close:
             settings_dialog.close()
 
@@ -321,9 +322,26 @@ def application_menu(*, on_export: Callable[[], None] | None = None) -> None:
             ui.item(f"About {APP_NAME}", on_click=about_dialog.open).classes("about-command")
 
 
+def update_application_status(message: str, detail: str | None = None) -> None:
+    """Update the visible status bar without rebuilding the surrounding page."""
+    message_json = json.dumps(message)
+    detail_script = (
+        ""
+        if detail is None
+        else (
+            "const detail = document.querySelector('.app-status-detail');"
+            f" if (detail) detail.textContent = {json.dumps(detail)};"
+        )
+    )
+    ui.run_javascript(
+        "const message = document.querySelector('.app-status-message');"
+        f" if (message) message.textContent = {message_json};"
+        f" {detail_script}"
+    )
+
+
 def application_status(message: str = "Ready", detail: str = "") -> None:
     """Render the application-wide status bar."""
     with ui.row().classes("app-status-bar w-full gap-1"):
-        ui.label(message).classes("status-bar-field grow")
-        if detail:
-            ui.label(detail).classes("status-bar-field")
+        ui.label(message).classes("status-bar-field app-status-message grow")
+        ui.label(detail).classes("status-bar-field app-status-detail")

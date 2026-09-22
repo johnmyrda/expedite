@@ -10,6 +10,7 @@ from expedite.pages.components import (
     application_status,
     group_box,
     labeled_field,
+    update_application_status,
 )
 from expedite.pages.navigation import event_navigation_tabs
 from expedite.storage.events import get_event
@@ -69,7 +70,7 @@ def register_event_details_page() -> None:
                     save_event(event)
                     title.text = f"Manage {event.name}"
                     ui.page_title(f"{event.name} - Manage")
-                    ui.notify("Event details saved", type="positive")
+                    update_application_status("Event details saved", event.name)
 
                 ui.button("Save Details", on_click=save_details).props("color=primary")
 
@@ -178,6 +179,7 @@ def register_event_details_page() -> None:
                                         def save_override(
                                             catalog_item_id: int | None = item.id,
                                             price_field: Input = price_input,
+                                            item_name: str = item.name,
                                         ) -> None:
                                             if catalog_item_id is None:
                                                 return
@@ -199,8 +201,8 @@ def register_event_details_page() -> None:
                                                 if price_cents is not None
                                                 else "Override cleared"
                                             )
-                                            ui.notify(message, type="positive")
                                             price_list.refresh()
+                                            update_application_status(message, item_name)
 
                                         save_button = ui.button(
                                             icon="save", on_click=save_override
@@ -214,14 +216,17 @@ def register_event_details_page() -> None:
 
                                             def clear_override(
                                                 catalog_item_id: int | None = item.id,
+                                                item_name: str = item.name,
                                             ) -> None:
                                                 if catalog_item_id is None:
                                                     return
                                                 save_event_catalog_price(
                                                     event, catalog_item_id, None
                                                 )
-                                                ui.notify("Override cleared", type="positive")
                                                 price_list.refresh()
+                                                update_application_status(
+                                                    "Override cleared", item_name
+                                                )
 
                                             reset_button = ui.button(
                                                 icon="restart_alt", on_click=clear_override

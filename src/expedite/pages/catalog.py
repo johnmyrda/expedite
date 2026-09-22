@@ -12,6 +12,7 @@ from expedite.pages.components import (
     classic_dialog,
     group_box,
     labeled_field,
+    update_application_status,
 )
 from expedite.storage.sqlite_store import (
     MAX_CATALOG_FAVORITES,
@@ -115,8 +116,8 @@ def register_catalog_page() -> None:
 
             state["selected_id"] = saved.id
             state["dialog_item_id"] = saved.id
-            ui.notify(f"Saved {saved.name}", type="positive")
             refresh_catalog()
+            update_application_status("Catalog item saved", saved.name)
             if close:
                 item_dialog.close()
 
@@ -235,11 +236,8 @@ def register_catalog_page() -> None:
                             ui.notify(str(error), type="negative")
                         else:
                             action = "Added to" if favorite else "Removed from"
-                            ui.notify(
-                                f"{action} intake favorites: {item.name}",
-                                type="positive",
-                            )
                             refresh_catalog()
+                            update_application_status(f"{action} intake favorites", item.name)
 
                     def toggle_active() -> None:
                         item = current_item()
@@ -253,8 +251,8 @@ def register_catalog_page() -> None:
                             active=not item.active,
                         )
                         action = "Activated" if saved.active else "Deactivated"
-                        ui.notify(f"{action} {saved.name}", type="positive")
                         refresh_catalog()
+                        update_application_status(action, saved.name)
 
                     with ui.row().classes("classic-list-toolbar w-full items-center gap-1"):
                         ui.button("New...", on_click=lambda: open_item_dialog(None)).props(

@@ -17,6 +17,7 @@ from expedite.pages.components import (
     classic_dialog,
     group_box,
     labeled_field,
+    update_application_status,
 )
 from expedite.pages.navigation import event_navigation_tabs
 from expedite.printing import PrintError, print_label
@@ -122,7 +123,7 @@ def register_intake_page() -> None:
             except PrintError as error:
                 ui.notify(str(error), type="negative", multi_line=True)
             else:
-                ui.notify(f"Sent label to {printer_name}", type="positive")
+                update_application_status("Label sent to printer", printer_name)
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
             application_menu()
@@ -540,8 +541,7 @@ def register_intake_page() -> None:
                     show_warnings(warnings)
                     status_area.clear()
                     with status_area, ui.row().classes("items-center gap-2"):
-                        verb = "Updated" if existing_order else "Saved"
-                        ui.label(f"{verb} order #{saved_order.order_id}").classes("text-positive")
+                        ui.label(f"Order #{saved_order.order_id} receipt")
                         ui.button(
                             icon="article",
                             on_click=lambda path=label_path: open_local_path(path),
@@ -552,9 +552,9 @@ def register_intake_page() -> None:
                         ).props("flat round dense").classes("text-primary").tooltip(
                             f"Print on {PRINTER_NAME}"
                         )
-                    ui.notify(
-                        f"{'Updated' if existing_order else 'Saved'} order #{saved_order.order_id}",
-                        type="positive",
+                    verb = "Updated" if existing_order else "Saved"
+                    update_application_status(
+                        f"{verb} order #{saved_order.order_id}", label_path.name
                     )
                     await print_label_image(label_path)
                     if not existing_order:

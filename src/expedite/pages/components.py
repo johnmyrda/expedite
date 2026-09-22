@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
-from nicegui import events, ui
+from nicegui import app, events, ui
 from nicegui.element import Element
 from nicegui.elements.button import Button
 from nicegui.elements.dialog import Dialog
@@ -343,6 +343,14 @@ def receipt_settings_dialog() -> Callable[[], None]:
     return open_settings
 
 
+def exit_application() -> None:
+    """Close the native application window."""
+    if app.native.main_window is not None:
+        app.native.main_window.destroy()
+    else:
+        ui.run_javascript("window.close()")
+
+
 def application_menu(*, on_export: Callable[[], None] | None = None) -> None:
     """Render the application-wide menu bar."""
     open_receipt_settings = receipt_settings_dialog()
@@ -363,6 +371,8 @@ def application_menu(*, on_export: Callable[[], None] | None = None) -> None:
             if on_export is not None:
                 ui.item("Export Orders...", on_click=on_export)
             ui.item("Open Data Folder", on_click=lambda: open_local_path(data_dir()))
+            ui.separator()
+            ui.item("Exit", on_click=exit_application).classes("exit-command")
         with ui.dropdown_button("Tools", auto_close=True, color=None).props(
             "flat dense no-caps dropdown-icon=none"
         ):

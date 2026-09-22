@@ -12,6 +12,7 @@ from expedite.pages.components import (
     application_menu,
     application_status,
     enable_list_keyboard,
+    group_box,
     sortable_header,
     update_application_status,
 )
@@ -240,5 +241,6 @@ def register_orders_page() -> None:
                                 with ui.element("td"):
                                     ui.label(order.cost)
 
-            order_list()
+            with group_box("Event Orders"):
+                order_list()
             order_status()

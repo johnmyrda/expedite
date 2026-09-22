@@ -289,7 +289,7 @@ def register_catalog_page() -> None:
                     with (
                         ui.element("div").classes("classic-list-panel"),
                         ui.element("table")
-                        .classes("classic-list")
+                        .classes("classic-list catalog-list")
                         .props('aria-label="Catalog items"') as catalog_table,
                     ):
                         enable_list_keyboard(catalog_table)

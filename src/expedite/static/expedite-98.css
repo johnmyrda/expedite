@@ -74,7 +74,7 @@ textarea,
   color: #222;
   background: var(--win98-surface);
   box-sizing: border-box;
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .app-menu-bar {
@@ -122,8 +122,11 @@ textarea,
 .app-status-bar .status-bar-field {
   min-width: 140px;
   padding: 3px 6px;
+  overflow: hidden;
   box-shadow: inset -1px -1px var(--win98-highlight), inset 1px 1px var(--win98-shadow);
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-status-bar .status-bar-field:last-child:not(:first-child) {
@@ -133,6 +136,7 @@ textarea,
 
 .app-page-header {
   min-height: 42px;
+  gap: 8px 12px;
   padding: 0 0 10px !important;
   border-bottom: 2px solid transparent;
   border-image: linear-gradient(to bottom, var(--win98-shadow) 0 50%, var(--win98-highlight) 50% 100%) 2;
@@ -142,9 +146,11 @@ textarea,
   color: #111 !important;
   font-family: "Expedite Tahoma", Tahoma, "Microsoft Sans Serif", Arial, sans-serif !important;
   font-size: 24px !important;
+  min-width: 0;
   font-weight: 600 !important;
   line-height: 30px !important;
   letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
 .classic-group {
@@ -261,14 +267,17 @@ button.q-btn.classic-quick-add-button {
 
 .classic-list-panel {
   width: 100%;
+  min-width: 0;
+  max-height: min(60vh, 560px);
   overflow: auto;
+  overscroll-behavior: contain;
   background: white;
   box-shadow: var(--win98-sunken);
 }
 
 .classic-list {
   width: 100%;
-  min-width: 760px;
+  min-width: 640px;
   table-layout: fixed;
   background: white;
 }
@@ -279,9 +288,13 @@ button.q-btn.classic-quick-add-button {
 }
 
 .classic-list th {
+  position: sticky;
+  z-index: 2;
+  top: 0;
   height: 28px;
   padding: 3px;
   overflow: hidden;
+  background: var(--win98-surface);
   font-size: 12px;
   text-overflow: ellipsis;
 }
@@ -354,6 +367,18 @@ button.q-btn.classic-sort-header:active {
   white-space: nowrap;
 }
 
+.event-list {
+  min-width: 500px;
+}
+
+.catalog-list {
+  min-width: 640px;
+}
+
+.order-list {
+  min-width: 900px;
+}
+
 .management-price-list {
   min-width: 600px;
 }
@@ -394,7 +419,9 @@ button.q-btn.classic-sort-header:active {
 }
 
 .event-tabs {
+  z-index: 1;
   min-height: 38px;
+  margin-bottom: -10px;
   padding: 5px 5px 0;
   background: var(--win98-surface);
   box-shadow: var(--win98-raised);
@@ -768,12 +795,63 @@ img.rounded {
   }
 
   .app-page {
-    padding: 8px !important;
+    padding: 8px 8px 40px !important;
   }
 
   .app-menu-bar {
     width: calc(100% + 16px) !important;
+    margin-top: -8px !important;
     margin-right: -8px !important;
     margin-left: -8px !important;
+  }
+
+  .app-status-bar {
+    flex-wrap: nowrap;
+  }
+
+  .app-status-bar .status-bar-field {
+    min-width: 0;
+  }
+
+  .app-status-bar .status-bar-field:last-child:not(:first-child) {
+    width: 42%;
+    min-width: 0;
+  }
+
+  .classic-group {
+    padding: 12px;
+  }
+
+  .classic-list-toolbar {
+    gap: 4px !important;
+    row-gap: 4px !important;
+  }
+
+  .event-tabs {
+    overflow-x: auto;
+  }
+
+  .event-tabs .q-tabs__content {
+    min-width: max-content;
+  }
+
+  .event-tabs .q-tab {
+    min-width: 92px;
+    margin-right: 2px;
+    padding: 0 8px;
+  }
+
+  .classic-dialog-body {
+    padding: 10px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .classic-file-row {
+    flex-wrap: wrap !important;
+  }
+
+  .classic-file-row .q-field {
+    flex-basis: 100%;
   }
 }

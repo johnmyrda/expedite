@@ -277,7 +277,7 @@ def receipt_settings_dialog() -> Callable[[], None]:
             )
             with (
                 labeled_field("File"),
-                ui.row().classes("w-full items-center gap-2 flex-nowrap"),
+                ui.row().classes("classic-file-row w-full items-center gap-2 flex-nowrap"),
             ):
                 filename_input = ui.input().props("outlined readonly").classes("grow min-w-0")
                 browse_button = ui.button("Browse...").props("flat")

@@ -126,11 +126,6 @@ def register_event_details_page() -> None:
                         "name": lambda item: item.name.casefold(),
                         "base_price": lambda item: item.base_price_cents,
                         "event_price": lambda item: overrides.get(item.id, item.base_price_cents),
-                        "status": lambda item: (
-                            item.id in overrides,
-                            item.active,
-                            item.name.casefold(),
-                        ),
                     }
                     items.sort(
                         key=key_functions[sort_key],
@@ -155,7 +150,6 @@ def register_event_details_page() -> None:
                                 ("Item", "name", "auto"),
                                 ("Base Price", "base_price", "130px"),
                                 ("Event Price", "event_price", "180px"),
-                                ("Status", "status", "150px"),
                                 ("Actions", None, "64px"),
                             ):
                                 with ui.element("th").style(f"width: {width}"):
@@ -172,7 +166,7 @@ def register_event_details_page() -> None:
                             if not items:
                                 with (
                                     ui.element("tr"),
-                                    ui.element("td").props("colspan=5"),
+                                    ui.element("td").props("colspan=4"),
                                 ):
                                     ui.label("No catalog items match this filter.")
 
@@ -181,7 +175,16 @@ def register_event_details_page() -> None:
                                 row = ui.element("tr").classes(
                                     "management-price-row"
                                     + (" has-override" if override is not None else "")
+                                    + (" is-inactive" if not item.active else "")
                                 )
+                                if not item.active and override is not None:
+                                    row.props(
+                                        'title="Inactive catalog item with an event price override"'
+                                    )
+                                elif not item.active:
+                                    row.props('title="Inactive catalog item"')
+                                elif override is not None:
+                                    row.props('title="Event price override"')
                                 with row:
                                     with ui.element("td"):
                                         ui.label(item.name).classes("font-medium")
@@ -206,13 +209,6 @@ def register_event_details_page() -> None:
                                         price_input.props["aria-label"] = (
                                             f"Event price for {item.name}"
                                         )
-                                    with ui.element("td"):
-                                        status = (
-                                            "Overridden" if override is not None else "Using Base"
-                                        )
-                                        if not item.active:
-                                            status += " · Inactive"
-                                        ui.label(status).classes("management-price-status")
                                     with ui.element("td").classes("classic-actions"):
                                         last_saved_price = {"value": override}
 

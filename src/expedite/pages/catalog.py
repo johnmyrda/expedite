@@ -194,7 +194,6 @@ def register_catalog_page() -> None:
                         "name": lambda item: item.name.casefold(),
                         "description": lambda item: (item.description or "").casefold(),
                         "price": lambda item: item.base_price_cents,
-                        "status": lambda item: item.active,
                     }
                     items.sort(
                         key=key_functions[sort_key],
@@ -300,7 +299,6 @@ def register_catalog_page() -> None:
                                 ("Name", "name", "24%"),
                                 ("Description", "description", "auto"),
                                 ("Price", "price", "120px"),
-                                ("Status", "status", "100px"),
                             ):
                                 with ui.element("th").style(f"width: {width}"):
                                     sortable_header(
@@ -313,15 +311,19 @@ def register_catalog_page() -> None:
                             if not items:
                                 with (
                                     ui.element("tr"),
-                                    ui.element("td").props("colspan=5"),
+                                    ui.element("td").props("colspan=4"),
                                 ):
                                     ui.label("No catalog items match this filter.")
 
                             for item in items:
                                 selected = item.id == state["selected_id"]
                                 row = ui.element("tr").classes(
-                                    "classic-list-row" + (" is-selected" if selected else "")
+                                    "classic-list-row"
+                                    + (" is-selected" if selected else "")
+                                    + (" is-inactive" if not item.active else "")
                                 )
+                                if not item.active:
+                                    row.props('title="Inactive catalog item"')
                                 if item.id is not None:
                                     row_elements[item.id] = row
                                 row.on(
@@ -370,8 +372,6 @@ def register_catalog_page() -> None:
                                         ui.label(item.description or "")
                                     with ui.element("td"):
                                         ui.label(display_price(item.base_price_cents))
-                                    with ui.element("td"):
-                                        ui.label("Active" if item.active else "Inactive")
 
                 def handle_filter_change(
                     event: events.ValueChangeEventArguments[str | None],

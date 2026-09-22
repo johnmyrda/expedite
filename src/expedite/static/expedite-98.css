@@ -333,6 +333,11 @@ button.q-btn.classic-sort-header:active {
   background: var(--win98-blue) !important;
 }
 
+.classic-list tbody .classic-list-row.is-inactive:not(.is-selected) td {
+  color: #777;
+  background: #e5e5e5;
+}
+
 .classic-list-row.is-selected .q-label {
   color: white !important;
 }
@@ -350,7 +355,7 @@ button.q-btn.classic-sort-header:active {
 }
 
 .management-price-list {
-  min-width: 820px;
+  min-width: 680px;
 }
 
 .management-price-list td {
@@ -361,8 +366,17 @@ button.q-btn.classic-sort-header:active {
   background: #ffffe1;
 }
 
-.management-price-list .management-price-row.has-override .management-price-status {
-  font-weight: bold;
+.management-price-list .management-price-row.is-inactive td {
+  color: #777;
+}
+
+.management-price-list .management-price-row.is-inactive:not(.has-override) td {
+  background: #e5e5e5;
+}
+
+.management-price-list .management-price-row.is-inactive .q-field__native,
+.management-price-list .management-price-row.is-inactive .q-field__prefix {
+  color: #777 !important;
 }
 
 .management-item-description {

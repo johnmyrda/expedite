@@ -155,13 +155,13 @@ def register_intake_page() -> None:
                     existing_order.order_id if existing_order else next_order_id(event)
                 )
                 title_prefix = "Edit Order" if existing_order else "Order"
-                order_title = ui.label(f"{title_prefix} #{current_order_id}").classes(
-                    "text-xl font-semibold"
-                )
-                with (
-                    group_box("Customer Information"),
-                    ui.element("div").classes("intake-customer-fields w-full"),
-                ):
+                with ui.row().classes("w-full items-center justify-between gap-2"):
+                    order_title = ui.label(f"{title_prefix} #{current_order_id}").classes(
+                        "text-xl font-semibold"
+                    )
+                    total_label = ui.label().classes("text-xl font-semibold")
+
+                with ui.element("div").classes("intake-customer-fields w-full"):
                     with labeled_field("Name"):
                         name_input = (
                             ui.input(
@@ -180,11 +180,6 @@ def register_intake_page() -> None:
                             .props("outlined debounce=2000")
                             .classes("w-full")
                         )
-
-                ui.separator()
-                with ui.row().classes("w-full items-center justify-between"):
-                    ui.label("Line Items").classes("text-lg font-semibold")
-                    total_label = ui.label().classes("text-lg font-semibold")
 
                 def draft_total_cents() -> int:
                     total = 0
@@ -224,7 +219,7 @@ def register_intake_page() -> None:
 
                 if favorite_items:
                     with (
-                        group_box("Quick Add"),
+                        group_box("Favorites"),
                         ui.element("div").classes("classic-quick-add-grid w-full"),
                     ):
                         for favorite_item in favorite_items:
@@ -448,12 +443,10 @@ def register_intake_page() -> None:
                     for index, line in enumerate(line_drafts, start=1):
                         render_line(index, line)
 
-                    def add_line() -> None:
-                        line_drafts.append(LineDraft())
-                        line_editor.refresh()
-                        update_total()
-
-                    ui.button("Add Line Item", icon="add", on_click=add_line).props("flat")
+                def add_line() -> None:
+                    line_drafts.append(LineDraft())
+                    line_editor.refresh()
+                    update_total()
 
                 line_editor()
                 update_total()
@@ -572,7 +565,10 @@ def register_intake_page() -> None:
                         order_title.text = f"Order #{next_order_id(event)}"
 
                 submit_text = "Save Changes" if existing_order else "Submit Order"
-                with ui.row().classes("w-full justify-end"):
+                with ui.row().classes(
+                    "intake-action-row w-full flex-nowrap items-center justify-between gap-2"
+                ):
+                    ui.button("Add Line Item", icon="add", on_click=add_line).props("flat")
                     submit_button = (
                         ui.button("+", on_click=handle_submit)
                         .props("color=primary icon=save icon-right=receipt_long no-caps")

@@ -882,7 +882,9 @@ img.rounded {
   }
 
   button.q-btn.order-submit-button {
-    width: 100%;
+    min-width: 150px;
+    padding-right: 12px;
+    padding-left: 12px;
   }
 
   .classic-file-row {

@@ -79,6 +79,27 @@ def register_catalog_page() -> None:
                 return
             try:
                 price_cents = parse_price_cents(price_input.value)
+            except ValueError as error:
+                ui.notify(str(error), type="negative")
+                focus(price_input)
+                return
+
+            favorite_ids = set(list_catalog_favorite_ids())
+            was_favorite = state["dialog_item_id"] in favorite_ids
+            wants_favorite = bool(favorite_input.value)
+            if wants_favorite and not active_input.value:
+                ui.notify("Inactive catalog items cannot be favorited.", type="negative")
+                focus(favorite_input)
+                return
+            if wants_favorite and not was_favorite and len(favorite_ids) >= MAX_CATALOG_FAVORITES:
+                ui.notify(
+                    f"No more than {MAX_CATALOG_FAVORITES} catalog items can be favorited.",
+                    type="negative",
+                )
+                focus(favorite_input)
+                return
+
+            try:
                 saved = save_catalog_item(
                     item_id=state["dialog_item_id"],
                     name=name,
@@ -86,9 +107,10 @@ def register_catalog_page() -> None:
                     base_price_cents=price_cents,
                     active=bool(active_input.value),
                 )
+                if saved.id is not None:
+                    set_catalog_item_favorite(saved.id, wants_favorite)
             except ValueError as error:
                 ui.notify(str(error), type="negative")
-                focus(price_input)
                 return
 
             state["selected_id"] = saved.id
@@ -120,8 +142,25 @@ def register_catalog_page() -> None:
                     description_input = (
                         ui.textarea().props("outlined dense autogrow").classes("w-full")
                     )
-                active_input = ui.checkbox("Active", value=True)
+                with ui.row().classes("items-center gap-6"):
+                    active_input = ui.checkbox("Active", value=True)
+                    favorite_input = ui.checkbox("Favorite", value=False)
             item_dialog.set_initial_focus(name_input)
+
+        def configure_favorite_input() -> None:
+            favorite_ids = set(list_catalog_favorite_ids())
+            already_favorite = state["dialog_item_id"] in favorite_ids
+            can_favorite = already_favorite or len(favorite_ids) < MAX_CATALOG_FAVORITES
+            favorite_input.set_enabled(bool(active_input.value) and can_favorite)
+
+        def handle_active_change(
+            event: events.ValueChangeEventArguments[bool | None],
+        ) -> None:
+            if not event.value:
+                favorite_input.value = False
+            configure_favorite_input()
+
+        active_input.on_value_change(handle_active_change)
 
         def open_item_dialog(item: CatalogItem | None) -> None:
             state["dialog_item_id"] = item.id if item is not None else None
@@ -129,6 +168,8 @@ def register_catalog_page() -> None:
             description_input.value = item.description or "" if item is not None else ""
             price_input.value = f"{item.base_price_cents / 100:.2f}" if item is not None else ""
             active_input.value = item.active if item is not None else True
+            favorite_input.value = item is not None and item.id in set(list_catalog_favorite_ids())
+            configure_favorite_input()
             if item_dialog.apply_button is not None:
                 item_dialog.apply_button.set_visibility(item is not None)
             item_dialog.open()

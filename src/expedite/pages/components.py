@@ -1,16 +1,28 @@
 """Reusable classic desktop UI components."""
 
+import base64
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
-from nicegui import ui
+from nicegui import events, ui
 from nicegui.element import Element
 from nicegui.elements.button import Button
 from nicegui.elements.dialog import Dialog
 
-from expedite.config import APP_NAME, data_dir
+from expedite.config import (
+    APP_NAME,
+    MAX_LABEL_NOTES_HEIGHT_MM,
+    PRINTER_NAME,
+    data_dir,
+)
 from expedite.local_files import open_local_path
+from expedite.storage.settings import (
+    MAX_LOGO_BYTES,
+    receipt_settings,
+    save_receipt_settings,
+    validate_receipt_logo_png,
+)
 
 
 @contextmanager
@@ -125,8 +137,143 @@ def classic_dialog(
         )
 
 
+def receipt_settings_dialog() -> Callable[[], None]:
+    """Create the shared Receipt Settings dialog and return its open command."""
+    saved_settings = receipt_settings()
+    pending_logo = saved_settings.logo_png
+    pending_filename = "receipt-logo.png" if pending_logo is not None else ""
+
+    def update_logo_controls() -> None:
+        filename_input.value = pending_filename
+        remove_button.set_enabled(pending_logo is not None)
+        logo_preview.refresh()
+
+    def remove_logo() -> None:
+        nonlocal pending_logo, pending_filename
+        pending_logo = None
+        pending_filename = ""
+        update_logo_controls()
+
+    async def upload_logo(event: events.UploadEventArguments) -> None:
+        nonlocal pending_logo, pending_filename
+        data = await event.file.read()
+        try:
+            validate_receipt_logo_png(data)
+        except ValueError as error:
+            ui.notify(str(error), type="negative")
+            return
+        pending_logo = data
+        pending_filename = event.file.name
+        logo_upload.reset()
+        update_logo_controls()
+
+    def save_settings(*, close: bool) -> None:
+        name = (receipt_name_input.value or "").strip()
+        if not name:
+            ui.notify("Receipt name cannot be empty.", type="negative")
+            receipt_name_input.run_method("focus")
+            return
+        try:
+            notes_height = float(notes_height_input.value or 0)
+            save_receipt_settings(
+                name=name,
+                notes_height_mm=notes_height,
+                logo_png=pending_logo,
+            )
+        except (TypeError, ValueError) as error:
+            ui.notify(str(error), type="negative")
+            notes_height_input.run_method("focus")
+            return
+        ui.notify("Receipt settings saved", type="positive")
+        if close:
+            settings_dialog.close()
+
+    with classic_dialog(
+        "Receipt Settings",
+        on_accept=lambda: save_settings(close=True),
+        on_apply=lambda: save_settings(close=False),
+        width="600px",
+    ) as settings_dialog:
+        with group_box("General"):
+            with labeled_field("Receipt name"):
+                receipt_name_input = ui.input().props("outlined maxlength=60").classes("w-full")
+            with labeled_field("Printer"):
+                ui.input(value=PRINTER_NAME).props("outlined readonly").classes("w-full")
+
+        with group_box("Logo"):
+            logo_upload = (
+                ui.upload(
+                    auto_upload=True,
+                    max_file_size=MAX_LOGO_BYTES,
+                    on_upload=upload_logo,
+                    on_rejected=lambda: ui.notify(
+                        "Logo must be a PNG file no larger than 5 MB.",
+                        type="negative",
+                    ),
+                )
+                .props("accept=.png")
+                .classes("hidden")
+            )
+            with (
+                labeled_field("File"),
+                ui.row().classes("w-full items-center gap-2 flex-nowrap"),
+            ):
+                filename_input = ui.input().props("outlined readonly").classes("grow min-w-0")
+                browse_button = ui.button("Browse...").props("flat")
+                remove_button = ui.button("Remove", on_click=remove_logo).props("flat")
+            browse_button.on(
+                "click",
+                js_handler=(
+                    "() => document.getElementById('"
+                    f"{logo_upload.html_id}"
+                    "')?.querySelector('input[type=file]')?.click()"
+                ),
+            )
+
+            @ui.refreshable
+            def logo_preview() -> None:
+                with ui.element("div").classes(
+                    "classic-logo-preview w-full flex items-center justify-center"
+                ):
+                    if pending_logo is None:
+                        ui.label("No receipt logo configured").classes("text-sm text-gray-500")
+                    else:
+                        encoded = base64.b64encode(pending_logo).decode("ascii")
+                        ui.image(f"data:image/png;base64,{encoded}").props("fit=contain").classes(
+                            "w-full"
+                        )
+
+            logo_preview()
+
+        with group_box("Layout"), labeled_field("Blank Notes area height"):
+            notes_height_input = (
+                ui.number(
+                    min=0,
+                    max=MAX_LABEL_NOTES_HEIGHT_MM,
+                    step=5,
+                )
+                .props("outlined suffix=mm")
+                .classes("w-full")
+            )
+        settings_dialog.set_initial_focus(receipt_name_input)
+
+    def open_settings() -> None:
+        nonlocal pending_logo, pending_filename
+        current = receipt_settings()
+        receipt_name_input.value = current.name
+        notes_height_input.value = current.notes_height_mm
+        pending_logo = current.logo_png
+        pending_filename = "receipt-logo.png" if pending_logo is not None else ""
+        logo_upload.reset()
+        update_logo_controls()
+        settings_dialog.open()
+
+    return open_settings
+
+
 def application_menu(*, on_export: Callable[[], None] | None = None) -> None:
     """Render the application-wide menu bar."""
+    open_receipt_settings = receipt_settings_dialog()
     with classic_dialog(
         f"About {APP_NAME}",
         accept_label="OK",
@@ -148,6 +295,7 @@ def application_menu(*, on_export: Callable[[], None] | None = None) -> None:
             "flat dense no-caps dropdown-icon=none"
         ):
             ui.item("Catalog", on_click=lambda: ui.navigate.to("/catalog"))
+            ui.item("Receipt Settings...", on_click=open_receipt_settings)
         with ui.dropdown_button("Help", auto_close=True, color=None).props(
             "flat dense no-caps dropdown-icon=none"
         ):

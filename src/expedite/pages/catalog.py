@@ -91,25 +91,11 @@ def register_catalog_page() -> None:
                     def configure_toolbar() -> None:
                         item = current_item()
                         editing = state["editing_id"] is not None or bool(state["creating"])
-                        favorite_button.set_text(
-                            "Remove Favorite"
-                            if item is not None and item.id in favorite_ids
-                            else "Add Favorite"
-                        )
                         active_button.set_text(
                             "Deactivate" if item is None or item.active else "Activate"
                         )
                         edit_button.enabled = item is not None and not editing
                         active_button.enabled = item is not None and not editing
-                        favorite_available = (
-                            item is not None
-                            and item.active
-                            and not editing
-                            and (
-                                item.id in favorite_ids or len(favorite_ids) < MAX_CATALOG_FAVORITES
-                            )
-                        )
-                        favorite_button.enabled = favorite_available
 
                     def select_item(item_id: int | None) -> None:
                         previous_id = state["selected_id"]
@@ -136,11 +122,9 @@ def register_catalog_page() -> None:
                         state["editing_id"] = selected_id
                         refresh_catalog()
 
-                    def toggle_favorite() -> None:
-                        item = current_item()
-                        if item is None or item.id is None:
+                    def set_favorite(item: CatalogItem, favorite: bool) -> None:
+                        if item.id is None:
                             return
-                        favorite = item.id not in favorite_ids
                         try:
                             set_catalog_item_favorite(item.id, favorite)
                         except ValueError as error:
@@ -174,9 +158,6 @@ def register_catalog_page() -> None:
                             "flat dense"
                         )
                         ui.element("div").classes("classic-toolbar-separator")
-                        favorite_button = ui.button("Add Favorite", on_click=toggle_favorite).props(
-                            "flat dense"
-                        )
                         active_button = ui.button("Deactivate", on_click=toggle_active).props(
                             "flat dense"
                         )
@@ -253,7 +234,7 @@ def register_catalog_page() -> None:
                             with ui.element("thead"):
                                 with ui.element("tr"):
                                     for heading, width in (
-                                        ("Fav", "60px"),
+                                        ("Favorite", "86px"),
                                         ("Name", "24%"),
                                         ("Description", "auto"),
                                         ("Price", "120px"),
@@ -288,10 +269,38 @@ def register_catalog_page() -> None:
                                         lambda item_id=item.id: start_edit(item_id),
                                     )
                                     with row:
-                                        with ui.element("td"):
-                                            ui.label(
-                                                "★" if item.id in favorite_ids else ""
-                                            ).classes("classic-favorite-marker")
+                                        with ui.element("td").classes("classic-actions"):
+                                            is_favorite = item.id in favorite_ids
+
+                                            def handle_favorite(
+                                                selected_item: CatalogItem = item,
+                                                favorite: bool = not is_favorite,
+                                            ) -> None:
+                                                set_favorite(selected_item, favorite)
+
+                                            favorite_button = (
+                                                ui.button("★" if is_favorite else "☆")
+                                                .props("flat round dense")
+                                                .classes("classic-favorite-button")
+                                                .on(
+                                                    "click",
+                                                    handle_favorite,
+                                                    js_handler=(
+                                                        "(event) => { "
+                                                        "event.stopPropagation(); emit(); }"
+                                                    ),
+                                                )
+                                            )
+                                            favorite_button.tooltip(
+                                                "Remove from intake favorites"
+                                                if is_favorite
+                                                else "Add to intake favorites"
+                                            )
+                                            if not item.active or (
+                                                not is_favorite
+                                                and len(favorite_ids) >= MAX_CATALOG_FAVORITES
+                                            ):
+                                                favorite_button.disable()
                                         with ui.element("td"):
                                             ui.label(item.name).classes("font-medium")
                                         with ui.element("td"):

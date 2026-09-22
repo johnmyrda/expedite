@@ -81,14 +81,18 @@ def register_event_details_page() -> None:
                 with ui.row().classes("w-full items-center gap-3 flex-wrap"):
                     with labeled_field("Filter by name or description", classes="grow min-w-64"):
                         filter_input = ui.input().props("outlined clearable").classes("w-full")
-                    pricing_filter = ui.toggle(
-                        {
-                            "all": "All",
-                            "overridden": "Overridden",
-                            "base": "Using Base",
-                        },
-                        value="all",
-                    ).props("no-caps")
+                    pricing_filter = (
+                        ui.toggle(
+                            {
+                                "all": "All",
+                                "overridden": "Overridden",
+                                "base": "Using Base",
+                            },
+                            value="all",
+                        )
+                        .props("no-caps")
+                        .classes("pricing-filter")
+                    )
 
                 @ui.refreshable
                 def price_list() -> None:

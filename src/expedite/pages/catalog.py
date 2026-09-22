@@ -10,6 +10,7 @@ from expedite.pages.components import (
     application_menu,
     application_status,
     classic_dialog,
+    enable_list_keyboard,
     group_box,
     labeled_field,
     update_application_status,
@@ -265,8 +266,11 @@ def register_catalog_page() -> None:
 
                     with (
                         ui.element("div").classes("classic-list-panel"),
-                        ui.element("table").classes("classic-list"),
+                        ui.element("table")
+                        .classes("classic-list")
+                        .props('aria-label="Catalog items"') as catalog_table,
                     ):
+                        enable_list_keyboard(catalog_table)
                         with ui.element("thead"), ui.element("tr"):
                             for heading, width in (
                                 ("Favorite", "86px"),

@@ -11,6 +11,7 @@ from expedite.models import OrderRecord
 from expedite.pages.components import (
     application_menu,
     application_status,
+    enable_list_keyboard,
     update_application_status,
 )
 from expedite.pages.navigation import event_navigation_tabs
@@ -148,8 +149,11 @@ def register_orders_page() -> None:
 
                 with (
                     ui.element("div").classes("classic-list-panel"),
-                    ui.element("table").classes("classic-list order-list"),
+                    ui.element("table")
+                    .classes("classic-list order-list")
+                    .props('aria-label="Orders"') as order_table,
                 ):
+                    enable_list_keyboard(order_table)
                     with ui.element("thead"), ui.element("tr"):
                         for heading, width in (
                             ("ID", "70px"),

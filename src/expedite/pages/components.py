@@ -43,6 +43,42 @@ def labeled_field(label: str, *, classes: str = "w-full") -> Iterator[None]:
         yield
 
 
+def enable_list_keyboard(list_element: Element) -> None:
+    """Enable classic Up/Down selection and Enter activation on a list table."""
+    list_element.props("tabindex=0")
+    list_element.on(
+        "click",
+        js_handler="(event) => event.currentTarget.focus()",
+    )
+    list_element.on(
+        "keydown",
+        js_handler="""
+        (event) => {
+            if (event.target !== event.currentTarget) return;
+            const rows = [...event.currentTarget.querySelectorAll('.classic-list-row')];
+            if (!rows.length) return;
+            const selectedIndex = rows.findIndex(row => row.classList.contains('is-selected'));
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                const offset = event.key === 'ArrowDown' ? 1 : -1;
+                const fallback = event.key === 'ArrowDown' ? 0 : rows.length - 1;
+                const nextIndex = selectedIndex < 0
+                    ? fallback
+                    : Math.min(Math.max(selectedIndex + offset, 0), rows.length - 1);
+                rows[nextIndex].click();
+                rows[nextIndex].scrollIntoView({block: 'nearest'});
+            } else if (event.key === 'Enter' && selectedIndex >= 0) {
+                event.preventDefault();
+                rows[selectedIndex].dispatchEvent(new MouseEvent('dblclick', {
+                    bubbles: true,
+                    cancelable: true,
+                }));
+            }
+        }
+        """,
+    )
+
+
 @dataclass
 class ClassicDialog:
     """Controller for a reusable classic modal dialog."""

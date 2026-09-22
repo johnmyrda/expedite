@@ -11,6 +11,7 @@ from expedite.pages.components import (
     application_menu,
     application_status,
     classic_dialog,
+    enable_list_keyboard,
     group_box,
     labeled_field,
 )
@@ -136,8 +137,11 @@ def register_events_page() -> None:
 
                 with (
                     ui.element("div").classes("classic-list-panel"),
-                    ui.element("table").classes("classic-list event-list"),
+                    ui.element("table")
+                    .classes("classic-list event-list")
+                    .props('aria-label="Recent events"') as event_table,
                 ):
+                    enable_list_keyboard(event_table)
                     with ui.element("thead"), ui.element("tr"):
                         for heading, width in (
                             ("Event", "40%"),

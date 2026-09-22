@@ -273,6 +273,11 @@ button.q-btn.classic-quick-add-button {
   background: white;
 }
 
+.classic-list:focus {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
 .classic-list th {
   height: 28px;
   padding: 4px 8px;

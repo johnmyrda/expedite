@@ -189,6 +189,43 @@ textarea,
   min-height: 70px;
 }
 
+.classic-number-control,
+.classic-spin-control {
+  height: 44px;
+}
+
+.classic-number-input .q-field__control,
+.classic-number-input .q-field__marginal {
+  height: 44px;
+  min-height: 44px;
+}
+
+.classic-spin-control {
+  width: 34px;
+  min-width: 34px;
+}
+
+.classic-spin-control button.q-btn.classic-spin-button {
+  width: 34px;
+  min-width: 34px;
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0;
+  font-family: Arial, sans-serif !important;
+  font-size: 8px !important;
+  line-height: 8px;
+}
+
+.classic-number-input input[type="number"] {
+  appearance: textfield;
+}
+
+.classic-number-input input[type="number"]::-webkit-inner-spin-button,
+.classic-number-input input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
 .classic-list-toolbar {
   min-height: 34px;
   padding: 2px 0 5px;

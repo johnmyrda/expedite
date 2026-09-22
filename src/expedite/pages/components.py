@@ -167,6 +167,14 @@ def receipt_settings_dialog() -> Callable[[], None]:
         logo_upload.reset()
         update_logo_controls()
 
+    def adjust_notes_height(amount: float) -> None:
+        try:
+            current = float(notes_height_input.value or 0)
+        except (TypeError, ValueError):
+            current = 0
+        value = min(max(current + amount, 0), MAX_LABEL_NOTES_HEIGHT_MM)
+        notes_height_input.value = int(value) if value.is_integer() else value
+
     def save_settings(*, close: bool) -> None:
         name = (receipt_name_input.value or "").strip()
         if not name:
@@ -245,7 +253,11 @@ def receipt_settings_dialog() -> Callable[[], None]:
 
             logo_preview()
 
-        with group_box("Layout"), labeled_field("Blank Notes area height"):
+        with (
+            group_box("Layout"),
+            labeled_field("Notes height"),
+            ui.row().classes("classic-number-control w-full items-stretch gap-0 flex-nowrap"),
+        ):
             notes_height_input = (
                 ui.number(
                     min=0,
@@ -253,8 +265,15 @@ def receipt_settings_dialog() -> Callable[[], None]:
                     step=5,
                 )
                 .props("outlined suffix=mm")
-                .classes("w-full")
+                .classes("grow min-w-0 classic-number-input")
             )
+            with ui.column().classes("classic-spin-control gap-0"):
+                ui.button("▲", on_click=lambda: adjust_notes_height(5)).props(
+                    'flat dense aria-label="Increase notes height"'
+                ).classes("classic-spin-button")
+                ui.button("▼", on_click=lambda: adjust_notes_height(-5)).props(
+                    'flat dense aria-label="Decrease notes height"'
+                ).classes("classic-spin-button")
         settings_dialog.set_initial_focus(receipt_name_input)
 
     def open_settings() -> None:

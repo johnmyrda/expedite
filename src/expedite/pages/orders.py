@@ -57,7 +57,7 @@ def register_orders_page() -> None:
             key = str(state["sort_key"])
             key_functions = {
                 "order_id": lambda order: order.order_id,
-                "timestamp": lambda order: order.timestamp,
+                "timestamp": lambda order: order.timestamp.timestamp(),
                 "name": lambda order: order.name.casefold(),
                 "phone": lambda order: order.phone,
                 "work_request": lambda order: order.work_request.casefold(),

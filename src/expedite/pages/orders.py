@@ -12,11 +12,10 @@ from expedite.pages.components import (
     application_menu,
     application_status,
     enable_list_keyboard,
-    group_box,
     sortable_header,
     update_application_status,
 )
-from expedite.pages.navigation import event_navigation_tabs
+from expedite.pages.navigation import event_navigation_tabs, event_page_header
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import export_orders_csv, list_order_records
@@ -87,16 +86,7 @@ def register_orders_page() -> None:
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
             application_menu(on_export=handle_export)
-            with (
-                ui.row().classes("app-page-header w-full items-center justify-between"),
-                ui.row().classes("items-center gap-2"),
-            ):
-                ui.label(f"{event.name} Orders").classes("app-page-title text-3xl font-bold")
-                ui.button(
-                    icon="folder_open",
-                    on_click=lambda: open_local_path(event.path),
-                ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
-
+            event_page_header(event)
             event_navigation_tabs(event.folder_name(), "orders")
 
             def selected_order() -> OrderRecord | None:
@@ -241,6 +231,6 @@ def register_orders_page() -> None:
                                 with ui.element("td"):
                                     ui.label(order.cost)
 
-            with group_box("Event Orders"):
+            with ui.column().classes("event-page-content w-full gap-4"):
                 order_list()
             order_status()

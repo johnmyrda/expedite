@@ -13,7 +13,7 @@ from expedite.pages.components import (
     sortable_header,
     update_application_status,
 )
-from expedite.pages.navigation import event_navigation_tabs
+from expedite.pages.navigation import event_navigation_tabs, event_page_header
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
     event_catalog_prices,
@@ -48,14 +48,12 @@ def register_event_details_page() -> None:
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
             application_menu()
-            with ui.row().classes("app-page-header w-full items-center justify-between"):
-                title = ui.label(f"Manage {event.name}").classes(
-                    "app-page-title text-3xl font-bold"
-                )
-
+            title = event_page_header(event)
             event_navigation_tabs(folder_name, "management")
 
-            with group_box("Event Details"), ui.row().classes("w-full items-end gap-3 flex-wrap"):
+            with ui.row().classes(
+                "event-page-content event-details-editor w-full items-end gap-3 flex-wrap"
+            ):
                 with labeled_field("Event name", classes="grow min-w-64"):
                     name_input = ui.input(value=event.name).props("outlined").classes("w-full")
                 with labeled_field("Start date", classes="w-48"):
@@ -74,7 +72,7 @@ def register_event_details_page() -> None:
                         return
                     event = event.model_copy(update={"name": name, "start_date": start_date})
                     save_event(event)
-                    title.text = f"Manage {event.name}"
+                    title.text = event.name
                     ui.page_title(f"{event.name} - Manage")
                     update_application_status("Event details saved", event.name)
 

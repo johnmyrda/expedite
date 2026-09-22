@@ -3,9 +3,27 @@
 from typing import Literal
 
 from nicegui import events, ui
+from nicegui.elements.label import Label
 from nicegui.elements.tabs import Tab, TabPanel
 
+from expedite.local_files import open_local_path
+from expedite.models import Event
+
 EventTab = Literal["intake", "orders", "management"]
+
+
+def event_page_header(event: Event) -> Label:
+    """Render the consistent header shared by all event routes."""
+    with (
+        ui.row().classes("app-page-header w-full items-center justify-between"),
+        ui.row().classes("event-header-main min-w-0 items-center gap-2"),
+    ):
+        title = ui.label(event.name).classes("app-page-title text-3xl font-bold")
+        ui.button(
+            icon="folder_open",
+            on_click=lambda: open_local_path(event.path),
+        ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
+    return title
 
 
 def event_navigation_tabs(folder_name: str, active: EventTab) -> None:

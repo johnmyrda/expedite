@@ -434,25 +434,31 @@ button.q-btn.classic-sort-header:active {
   min-height: 32px;
 }
 
+.event-page-content {
+  min-width: 0;
+}
+
 .event-tabs {
   z-index: 1;
-  min-height: 38px;
-  margin-bottom: -10px;
-  padding: 5px 5px 0;
-  background: var(--win98-surface);
-  box-shadow: var(--win98-raised);
+  min-height: 34px;
+  margin-top: -8px;
+  margin-bottom: -8px;
+  padding: 3px 4px 0;
+  background: transparent;
+  box-shadow: inset 0 -1px var(--win98-shadow), inset 0 -2px var(--win98-highlight);
 }
 
 .event-tabs .q-tabs__content {
+  align-items: flex-end;
   justify-content: flex-start;
   overflow: visible;
 }
 
 .event-tabs .q-tab {
   min-width: 110px;
-  min-height: 31px;
-  margin-right: 4px;
-  padding: 0 16px;
+  min-height: 30px;
+  margin-right: 3px;
+  padding: 0 14px;
   color: #222 !important;
   background: var(--win98-face);
   border-radius: 0 !important;
@@ -463,10 +469,12 @@ button.q-btn.classic-sort-header:active {
 }
 
 .event-tabs .q-tab--active {
+  z-index: 2;
+  min-height: 32px;
+  margin-bottom: -2px;
   background: var(--win98-surface);
   box-shadow: inset 1px 1px var(--win98-highlight), inset -1px 0 var(--win98-frame), inset 2px 2px var(--win98-face), inset -2px 0 var(--win98-shadow);
   font-weight: bold;
-  transform: translateY(2px);
 }
 
 .event-tabs .q-tab__indicator,

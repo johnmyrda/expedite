@@ -20,7 +20,7 @@ from expedite.pages.components import (
     labeled_field,
     update_application_status,
 )
-from expedite.pages.navigation import event_navigation_tabs
+from expedite.pages.navigation import event_navigation_tabs, event_page_header
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
@@ -140,16 +140,7 @@ def register_intake_page() -> None:
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
             application_menu()
-            with (
-                ui.row().classes("app-page-header w-full items-center justify-between"),
-                ui.row().classes("items-center gap-2"),
-            ):
-                ui.label(event.name).classes("app-page-title text-3xl font-bold")
-                ui.button(
-                    icon="folder_open",
-                    on_click=lambda: open_local_path(event.path),
-                ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
-
+            event_page_header(event)
             event_navigation_tabs(event.folder_name(), "intake")
 
             warning_box = ui.card().classes("w-full bg-amber-50 hidden")
@@ -159,7 +150,7 @@ def register_intake_page() -> None:
                 )
                 warning_list = ui.column().classes("gap-1")
 
-            with group_box("Order Intake"):
+            with ui.column().classes("event-page-content w-full gap-4"):
                 current_order_id = (
                     existing_order.order_id if existing_order else next_order_id(event)
                 )

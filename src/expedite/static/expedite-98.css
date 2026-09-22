@@ -245,6 +245,21 @@ button.q-btn.classic-quick-add-button {
   text-align: left;
 }
 
+button.q-btn.order-submit-button {
+  min-width: 240px;
+  min-height: 48px;
+  padding: 0 20px;
+  font-size: 15px !important;
+}
+
+.order-submit-button .q-btn__content {
+  gap: 10px;
+}
+
+button.q-btn.order-submit-button .q-icon {
+  font-size: 20px;
+}
+
 .classic-quick-add-button .q-btn__content {
   min-width: 0;
   justify-content: flex-start;
@@ -847,6 +862,10 @@ img.rounded {
 }
 
 @media (max-width: 480px) {
+  button.q-btn.order-submit-button {
+    width: 100%;
+  }
+
   .classic-file-row {
     flex-wrap: wrap !important;
   }

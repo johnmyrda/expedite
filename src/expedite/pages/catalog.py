@@ -1,6 +1,7 @@
 """Catalog management page."""
 
 from nicegui import events, ui
+from nicegui.element import Element
 
 from expedite.config import APP_NAME
 from expedite.models import CatalogItem
@@ -8,6 +9,7 @@ from expedite.money import display_price, parse_price_cents
 from expedite.pages.components import (
     application_menu,
     application_status,
+    classic_dialog,
     group_box,
     labeled_field,
 )
@@ -27,11 +29,10 @@ def register_catalog_page() -> None:
         apply_windows_98_theme()
         ui.page_title(f"{APP_NAME} - Catalog")
 
-        state: dict[str, int | str | bool | None] = {
+        state: dict[str, int | str | None] = {
             "filter": "",
             "selected_id": None,
-            "editing_id": None,
-            "creating": False,
+            "dialog_item_id": None,
         }
 
         def visible_items() -> list[CatalogItem]:
@@ -63,6 +64,75 @@ def register_catalog_page() -> None:
             )
             application_status("Ready", detail)
 
+        def refresh_catalog() -> None:
+            item_list.refresh()
+            catalog_status.refresh()
+
+        def focus(element: Element) -> None:
+            ui.timer(0.05, lambda: element.run_method("focus"), once=True)
+
+        def save_dialog(*, close: bool) -> None:
+            name = (name_input.value or "").strip()
+            if not name:
+                ui.notify("Name is required.", type="negative")
+                focus(name_input)
+                return
+            try:
+                price_cents = parse_price_cents(price_input.value)
+                saved = save_catalog_item(
+                    item_id=state["dialog_item_id"],
+                    name=name,
+                    description=(description_input.value or "").strip() or None,
+                    base_price_cents=price_cents,
+                    active=bool(active_input.value),
+                )
+            except ValueError as error:
+                ui.notify(str(error), type="negative")
+                focus(price_input)
+                return
+
+            state["selected_id"] = saved.id
+            state["dialog_item_id"] = saved.id
+            ui.notify(f"Saved {saved.name}", type="positive")
+            refresh_catalog()
+            if close:
+                item_dialog.close()
+
+        with classic_dialog(
+            "Catalog Item Properties",
+            on_accept=lambda: save_dialog(close=True),
+            on_apply=lambda: save_dialog(close=False),
+            width="560px",
+        ) as item_dialog:
+            with group_box("General"):
+                with ui.row().classes("w-full items-end gap-3 flex-wrap"):
+                    with labeled_field("Name", classes="grow min-w-64"):
+                        name_input = (
+                            ui.input().props("outlined dense maxlength=120").classes("w-full")
+                        )
+                    with labeled_field("Base price", classes="w-36"):
+                        price_input = (
+                            ui.input()
+                            .props("outlined dense prefix=$ inputmode=decimal")
+                            .classes("w-full")
+                        )
+                with labeled_field("Description"):
+                    description_input = (
+                        ui.textarea().props("outlined dense autogrow").classes("w-full")
+                    )
+                active_input = ui.checkbox("Active", value=True)
+            item_dialog.set_initial_focus(name_input)
+
+        def open_item_dialog(item: CatalogItem | None) -> None:
+            state["dialog_item_id"] = item.id if item is not None else None
+            name_input.value = item.name if item is not None else ""
+            description_input.value = item.description or "" if item is not None else ""
+            price_input.value = f"{item.base_price_cents / 100:.2f}" if item is not None else ""
+            active_input.value = item.active if item is not None else True
+            if item_dialog.apply_button is not None:
+                item_dialog.apply_button.set_visibility(item is not None)
+            item_dialog.open()
+
         with ui.column().classes("app-page w-full p-6 gap-6"):
             application_menu()
             with ui.row().classes("app-page-header w-full items-center justify-between"):
@@ -84,18 +154,13 @@ def register_catalog_page() -> None:
                             None,
                         )
 
-                    def refresh_catalog() -> None:
-                        item_list.refresh()
-                        catalog_status.refresh()
-
                     def configure_toolbar() -> None:
                         item = current_item()
-                        editing = state["editing_id"] is not None or bool(state["creating"])
                         active_button.set_text(
                             "Deactivate" if item is None or item.active else "Activate"
                         )
-                        edit_button.enabled = item is not None and not editing
-                        active_button.enabled = item is not None and not editing
+                        edit_button.enabled = item is not None
+                        active_button.enabled = item is not None
 
                     def select_item(item_id: int | None) -> None:
                         previous_id = state["selected_id"]
@@ -107,20 +172,18 @@ def register_catalog_page() -> None:
                         configure_toolbar()
                         catalog_status.refresh()
 
-                    def start_create() -> None:
-                        state["selected_id"] = None
-                        state["editing_id"] = None
-                        state["creating"] = True
-                        refresh_catalog()
-
                     def start_edit(item_id: int | None = None) -> None:
                         selected_id = item_id if item_id is not None else state["selected_id"]
                         if selected_id is None:
                             return
-                        state["selected_id"] = selected_id
-                        state["creating"] = False
-                        state["editing_id"] = selected_id
-                        refresh_catalog()
+                        item = next(
+                            (candidate for candidate in items if candidate.id == selected_id),
+                            None,
+                        )
+                        if item is None:
+                            return
+                        select_item(selected_id)
+                        open_item_dialog(item)
 
                     def set_favorite(item: CatalogItem, favorite: bool) -> None:
                         if item.id is None:
@@ -153,7 +216,9 @@ def register_catalog_page() -> None:
                         refresh_catalog()
 
                     with ui.row().classes("classic-list-toolbar w-full items-center gap-1"):
-                        ui.button("New...", on_click=start_create).props("flat dense")
+                        ui.button("New...", on_click=lambda: open_item_dialog(None)).props(
+                            "flat dense"
+                        )
                         edit_button = ui.button("Edit...", on_click=lambda: start_edit()).props(
                             "flat dense"
                         )
@@ -163,152 +228,83 @@ def register_catalog_page() -> None:
                         )
                         configure_toolbar()
 
-                    def cancel_edit() -> None:
-                        state["editing_id"] = None
-                        state["creating"] = False
-                        refresh_catalog()
+                    with (
+                        ui.element("div").classes("classic-list-panel"),
+                        ui.element("table").classes("classic-list"),
+                    ):
+                        with ui.element("thead"), ui.element("tr"):
+                            for heading, width in (
+                                ("Favorite", "86px"),
+                                ("Name", "24%"),
+                                ("Description", "auto"),
+                                ("Price", "120px"),
+                                ("Status", "100px"),
+                            ):
+                                with ui.element("th").style(f"width: {width}"):
+                                    ui.label(heading)
+                        with ui.element("tbody"):
+                            if not items:
+                                with (
+                                    ui.element("tr"),
+                                    ui.element("td").props("colspan=5"),
+                                ):
+                                    ui.label("No catalog items match this filter.")
 
-                    def render_editor(item: CatalogItem | None) -> None:
-                        title = "Edit Catalog Item" if item else "New Catalog Item"
-                        with group_box(title):
-                            with ui.row().classes("w-full items-end gap-3 flex-wrap"):
-                                with labeled_field("Name", classes="grow min-w-64"):
-                                    name_input = (
-                                        ui.input(value=item.name if item else "")
-                                        .props("outlined dense")
-                                        .classes("w-full")
-                                    )
-                                with labeled_field("Base price", classes="w-40"):
-                                    price_input = (
-                                        ui.input(
-                                            value=(
-                                                f"{item.base_price_cents / 100:.2f}" if item else ""
+                            for item in items:
+                                selected = item.id == state["selected_id"]
+                                row = ui.element("tr").classes(
+                                    "classic-list-row" + (" is-selected" if selected else "")
+                                )
+                                if item.id is not None:
+                                    row_elements[item.id] = row
+                                row.on(
+                                    "click",
+                                    lambda item_id=item.id: select_item(item_id),
+                                ).on(
+                                    "dblclick",
+                                    lambda item_id=item.id: start_edit(item_id),
+                                )
+                                with row:
+                                    with ui.element("td").classes("classic-actions"):
+                                        is_favorite = item.id in favorite_ids
+
+                                        def handle_favorite(
+                                            selected_item: CatalogItem = item,
+                                            favorite: bool = not is_favorite,
+                                        ) -> None:
+                                            set_favorite(selected_item, favorite)
+
+                                        favorite_button = (
+                                            ui.button("★" if is_favorite else "☆")
+                                            .props("flat round dense")
+                                            .classes("classic-favorite-button")
+                                            .on(
+                                                "click",
+                                                handle_favorite,
+                                                js_handler=(
+                                                    "(event) => { "
+                                                    "event.stopPropagation(); emit(); }"
+                                                ),
                                             )
                                         )
-                                        .props("outlined dense prefix=$ inputmode=decimal")
-                                        .classes("w-full")
-                                    )
-                                active_input = ui.checkbox(
-                                    "Active", value=item.active if item else True
-                                )
-                            with labeled_field("Description"):
-                                description_input = (
-                                    ui.textarea(value=item.description or "" if item else "")
-                                    .props("outlined dense autogrow")
-                                    .classes("w-full")
-                                )
-
-                            def handle_save() -> None:
-                                name = (name_input.value or "").strip()
-                                if not name:
-                                    ui.notify("Name is required.", type="negative")
-                                    return
-                                try:
-                                    price_cents = parse_price_cents(price_input.value)
-                                except ValueError as error:
-                                    ui.notify(str(error), type="negative")
-                                    return
-
-                                saved = save_catalog_item(
-                                    item_id=item.id if item else None,
-                                    name=name,
-                                    description=(description_input.value or "").strip() or None,
-                                    base_price_cents=price_cents,
-                                    active=bool(active_input.value),
-                                )
-                                ui.notify(f"Saved {saved.name}", type="positive")
-                                state["selected_id"] = saved.id
-                                state["editing_id"] = None
-                                state["creating"] = False
-                                refresh_catalog()
-
-                            with ui.row().classes("w-full justify-end gap-2"):
-                                ui.button("Save", on_click=handle_save).props("color=primary")
-                                ui.button("Cancel", on_click=cancel_edit).props("flat")
-
-                    if state["creating"]:
-                        render_editor(None)
-
-                    with ui.element("div").classes("classic-list-panel"):
-                        with ui.element("table").classes("classic-list"):
-                            with ui.element("thead"):
-                                with ui.element("tr"):
-                                    for heading, width in (
-                                        ("Favorite", "86px"),
-                                        ("Name", "24%"),
-                                        ("Description", "auto"),
-                                        ("Price", "120px"),
-                                        ("Status", "100px"),
-                                    ):
-                                        with ui.element("th").style(f"width: {width}"):
-                                            ui.label(heading)
-                            with ui.element("tbody"):
-                                if not items and not state["creating"]:
-                                    with ui.element("tr"):
-                                        with ui.element("td").props("colspan=5"):
-                                            ui.label("No catalog items match this filter.")
-
-                                for item in items:
-                                    if state["editing_id"] == item.id:
-                                        with ui.element("tr"):
-                                            with ui.element("td").props("colspan=5"):
-                                                render_editor(item)
-                                        continue
-
-                                    selected = item.id == state["selected_id"]
-                                    row = ui.element("tr").classes(
-                                        "classic-list-row" + (" is-selected" if selected else "")
-                                    )
-                                    if item.id is not None:
-                                        row_elements[item.id] = row
-                                    row.on(
-                                        "click",
-                                        lambda item_id=item.id: select_item(item_id),
-                                    ).on(
-                                        "dblclick",
-                                        lambda item_id=item.id: start_edit(item_id),
-                                    )
-                                    with row:
-                                        with ui.element("td").classes("classic-actions"):
-                                            is_favorite = item.id in favorite_ids
-
-                                            def handle_favorite(
-                                                selected_item: CatalogItem = item,
-                                                favorite: bool = not is_favorite,
-                                            ) -> None:
-                                                set_favorite(selected_item, favorite)
-
-                                            favorite_button = (
-                                                ui.button("★" if is_favorite else "☆")
-                                                .props("flat round dense")
-                                                .classes("classic-favorite-button")
-                                                .on(
-                                                    "click",
-                                                    handle_favorite,
-                                                    js_handler=(
-                                                        "(event) => { "
-                                                        "event.stopPropagation(); emit(); }"
-                                                    ),
-                                                )
-                                            )
-                                            favorite_button.tooltip(
-                                                "Remove from intake favorites"
-                                                if is_favorite
-                                                else "Add to intake favorites"
-                                            )
-                                            if not item.active or (
-                                                not is_favorite
-                                                and len(favorite_ids) >= MAX_CATALOG_FAVORITES
-                                            ):
-                                                favorite_button.disable()
-                                        with ui.element("td"):
-                                            ui.label(item.name).classes("font-medium")
-                                        with ui.element("td"):
-                                            ui.label(item.description or "")
-                                        with ui.element("td"):
-                                            ui.label(display_price(item.base_price_cents))
-                                        with ui.element("td"):
-                                            ui.label("Active" if item.active else "Inactive")
+                                        favorite_button.tooltip(
+                                            "Remove from intake favorites"
+                                            if is_favorite
+                                            else "Add to intake favorites"
+                                        )
+                                        if not item.active or (
+                                            not is_favorite
+                                            and len(favorite_ids) >= MAX_CATALOG_FAVORITES
+                                        ):
+                                            favorite_button.disable()
+                                    with ui.element("td"):
+                                        ui.label(item.name).classes("font-medium")
+                                    with ui.element("td"):
+                                        ui.label(item.description or "")
+                                    with ui.element("td"):
+                                        ui.label(display_price(item.base_price_cents))
+                                    with ui.element("td"):
+                                        ui.label("Active" if item.active else "Inactive")
 
                 def handle_filter_change(
                     event: events.ValueChangeEventArguments[str | None],
@@ -317,7 +313,6 @@ def register_catalog_page() -> None:
                     visible_ids = {item.id for item in visible_items()}
                     if state["selected_id"] not in visible_ids:
                         state["selected_id"] = None
-                        state["editing_id"] = None
                     item_list.refresh()
                     catalog_status.refresh()
 

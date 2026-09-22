@@ -36,6 +36,7 @@ class ClassicDialog:
 
     element: Dialog
     default_button: Button | None = None
+    apply_button: Button | None = None
     initial_focus: Element | None = None
 
     def set_initial_focus(self, element: Element) -> None:
@@ -107,7 +108,7 @@ def classic_dialog(
             if cancel_label is not None:
                 ui.button(cancel_label, on_click=dialog.close).props("flat")
             if on_apply is not None:
-                ui.button(apply_label, on_click=on_apply).props("flat")
+                controller.apply_button = ui.button(apply_label, on_click=on_apply).props("flat")
 
         card.on(
             "keydown",

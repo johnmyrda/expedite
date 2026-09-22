@@ -159,6 +159,19 @@ body,
   min-height: 70px;
 }
 
+.classic-list-toolbar {
+  min-height: 34px;
+  padding: 2px 0 5px;
+  background: var(--win98-surface);
+}
+
+.classic-toolbar-separator {
+  width: 2px;
+  height: 24px;
+  margin: 0 5px;
+  background: linear-gradient(to right, var(--win98-shadow) 0 1px, var(--win98-highlight) 1px 2px);
+}
+
 .classic-list-panel {
   width: 100%;
   overflow: auto;
@@ -191,8 +204,29 @@ body,
   vertical-align: middle;
 }
 
-.classic-list tbody tr:hover td {
+.classic-list-row {
+  cursor: default;
+  user-select: none;
+}
+
+.classic-list tbody .classic-list-row:hover td {
   background: var(--win98-face);
+}
+
+.classic-list tbody .classic-list-row.is-selected td,
+.classic-list tbody .classic-list-row.is-selected:hover td {
+  color: white !important;
+  background: var(--win98-blue) !important;
+}
+
+.classic-list-row.is-selected .q-label {
+  color: white !important;
+}
+
+.classic-favorite-marker {
+  font-family: Arial, sans-serif !important;
+  font-size: 16px;
+  text-align: center;
 }
 
 .classic-list .classic-actions {

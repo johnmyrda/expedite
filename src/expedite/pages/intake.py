@@ -564,11 +564,12 @@ def register_intake_page() -> None:
                 submit_text = "Save Changes" if existing_order else "Submit Order"
                 with ui.row().classes("w-full justify-end"):
                     submit_button = (
-                        ui.button(submit_text, on_click=handle_submit)
+                        ui.button("+", on_click=handle_submit)
                         .props("color=primary icon=save icon-right=receipt_long no-caps")
                         .classes("order-submit-button")
                     )
-                    submit_button.tooltip("Save order and create receipt")
+                    submit_button.props["aria-label"] = submit_text
+                    submit_button.tooltip(f"{submit_text}: save order and create receipt")
 
             status_detail = (
                 f"Editing order #{existing_order.order_id}" if existing_order else "New order"

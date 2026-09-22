@@ -219,7 +219,7 @@ def register_intake_page() -> None:
 
                 if favorite_items:
                     with (
-                        group_box("Favorites"),
+                        group_box("Quick Add"),
                         ui.element("div").classes("classic-quick-add-grid w-full"),
                     ):
                         for favorite_item in favorite_items:

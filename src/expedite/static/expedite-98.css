@@ -157,6 +157,9 @@ textarea,
   min-width: 0;
   padding: 14px 16px 16px;
   background: var(--win98-surface);
+  border-width: 2px;
+  border-style: groove;
+  border-color: transparent;
 }
 
 .classic-group-legend {

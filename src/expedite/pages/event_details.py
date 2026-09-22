@@ -150,23 +150,19 @@ def register_event_details_page() -> None:
                                 ("Item", "name", "auto"),
                                 ("Base Price", "base_price", "130px"),
                                 ("Event Price", "event_price", "180px"),
-                                ("Actions", None, "64px"),
                             ):
                                 with ui.element("th").style(f"width: {width}"):
-                                    if column_key is None:
-                                        ui.label(heading)
-                                    else:
-                                        sortable_header(
-                                            heading,
-                                            active=filters["sort_key"] == column_key,
-                                            descending=bool(filters["sort_descending"]),
-                                            on_click=lambda key=column_key: change_sort(key),
-                                        )
+                                    sortable_header(
+                                        heading,
+                                        active=filters["sort_key"] == column_key,
+                                        descending=bool(filters["sort_descending"]),
+                                        on_click=lambda key=column_key: change_sort(key),
+                                    )
                         with ui.element("tbody"):
                             if not items:
                                 with (
                                     ui.element("tr"),
-                                    ui.element("td").props("colspan=4"),
+                                    ui.element("td").props("colspan=3"),
                                 ):
                                     ui.label("No catalog items match this filter.")
 
@@ -209,73 +205,46 @@ def register_event_details_page() -> None:
                                         price_input.props["aria-label"] = (
                                             f"Event price for {item.name}"
                                         )
-                                    with ui.element("td").classes("classic-actions"):
-                                        last_saved_price = {"value": override}
+                                    last_saved_price = {"value": override}
 
-                                        def save_override(
-                                            catalog_item_id: int | None = item.id,
-                                            price_field: Input = price_input,
-                                            item_name: str = item.name,
-                                            saved_price: dict[str, int | None] = last_saved_price,
-                                        ) -> None:
-                                            if catalog_item_id is None:
-                                                return
-                                            raw_value = (price_field.value or "").strip()
-                                            try:
-                                                price_cents = (
-                                                    parse_price_cents(raw_value)
-                                                    if raw_value
-                                                    else None
-                                                )
-                                            except ValueError as error:
-                                                ui.notify(str(error), type="negative")
-                                                return
-                                            if price_cents == saved_price["value"]:
-                                                return
-                                            save_event_catalog_price(
-                                                event, catalog_item_id, price_cents
+                                    def save_override(
+                                        catalog_item_id: int | None = item.id,
+                                        price_field: Input = price_input,
+                                        item_name: str = item.name,
+                                        saved_price: dict[str, int | None] = last_saved_price,
+                                    ) -> None:
+                                        if catalog_item_id is None:
+                                            return
+                                        raw_value = (price_field.value or "").strip()
+                                        try:
+                                            price_cents = (
+                                                parse_price_cents(raw_value) if raw_value else None
                                             )
-                                            saved_price["value"] = price_cents
-                                            message = (
-                                                "Override saved"
-                                                if price_cents is not None
-                                                else "Override cleared"
-                                            )
-                                            price_list.refresh()
-                                            update_application_status(message, item_name)
-
-                                        price_input.on("blur", save_override)
-                                        price_input.on(
-                                            "keydown",
-                                            js_handler=(
-                                                "(event) => { if (event.key === 'Enter') {"
-                                                " event.preventDefault(); event.target.blur(); } }"
-                                            ),
+                                        except ValueError as error:
+                                            ui.notify(str(error), type="negative")
+                                            return
+                                        if price_cents == saved_price["value"]:
+                                            return
+                                        save_event_catalog_price(
+                                            event, catalog_item_id, price_cents
                                         )
+                                        saved_price["value"] = price_cents
+                                        message = (
+                                            "Override saved"
+                                            if price_cents is not None
+                                            else "Override cleared"
+                                        )
+                                        price_list.refresh()
+                                        update_application_status(message, item_name)
 
-                                        if override is not None:
-
-                                            def clear_override(
-                                                catalog_item_id: int | None = item.id,
-                                                item_name: str = item.name,
-                                            ) -> None:
-                                                if catalog_item_id is None:
-                                                    return
-                                                save_event_catalog_price(
-                                                    event, catalog_item_id, None
-                                                )
-                                                price_list.refresh()
-                                                update_application_status(
-                                                    "Override cleared", item_name
-                                                )
-
-                                            reset_button = ui.button(
-                                                icon="restart_alt", on_click=clear_override
-                                            ).props("flat round dense")
-                                            reset_button.props["aria-label"] = (
-                                                f"Use base price for {item.name}"
-                                            )
-                                            reset_button.tooltip("Use catalog base price")
+                                    price_input.on("blur", save_override)
+                                    price_input.on(
+                                        "keydown",
+                                        js_handler=(
+                                            "(event) => { if (event.key === 'Enter') {"
+                                            " event.preventDefault(); event.target.blur(); } }"
+                                        ),
+                                    )
 
                 def handle_filter_change(
                     change: events.ValueChangeEventArguments[str | None],

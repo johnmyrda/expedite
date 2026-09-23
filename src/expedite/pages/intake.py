@@ -18,7 +18,14 @@ from expedite.pages.application_shell import (
     application_menu,
     application_status,
 )
-from expedite.pages.classic_ui import classic_dialog, group_box, labeled_field
+from expedite.pages.classic_ui import (
+    adjacent_list_value,
+    classic_dialog,
+    enable_list_keyboard,
+    group_box,
+    labeled_field,
+    update_list_row_selection,
+)
 from expedite.pages.navigation import (
     event_navigation_tabs,
     event_not_found_page,
@@ -76,10 +83,6 @@ def register_intake_page(
         catalog = list_catalog_items()
         catalog_by_id = {item.id: item for item in catalog if item.id is not None}
         overrides = event_catalog_prices(event)
-        catalog_options = {0: "Freeform item"}
-        catalog_options.update(
-            {item_id: item.name for item_id, item in catalog_by_id.items() if item.active}
-        )
         favorite_ids = set(list_catalog_favorite_ids())
         favorite_items = [
             item
@@ -99,11 +102,6 @@ def register_intake_page(
                 )
                 for line in existing_order.line_items
             ]
-            for line in existing_order.line_items:
-                if line.catalog_item_id and line.catalog_item_id not in catalog_options:
-                    item = catalog_by_id.get(line.catalog_item_id)
-                    if item:
-                        catalog_options[line.catalog_item_id] = item.name
         elif existing_order:
             line_drafts = [
                 LineDraft(
@@ -273,48 +271,165 @@ def register_intake_page(
                                         .classes("w-full")
                                     )
 
-                                def catalog_option_label(item_id: int, name: str) -> str:
-                                    item = catalog_by_id[item_id]
-                                    price = overrides.get(item_id, item.base_price_cents)
-                                    return f"{name} · {display_price(price)}"
+                                selected_catalog_id = line.catalog_item_id
+                                catalog_query = ""
 
-                                full_options = {
-                                    item_id: catalog_option_label(item_id, name)
-                                    for item_id, name in catalog_options.items()
-                                    if item_id
-                                }
+                                def picker_items() -> list[int]:
+                                    query = catalog_query.strip().casefold()
+                                    return [
+                                        item_id
+                                        for item_id, item in catalog_by_id.items()
+                                        if item.active or item_id == line.catalog_item_id
+                                        if not query
+                                        or query in item.name.casefold()
+                                        or query in (item.description or "").casefold()
+                                    ]
 
-                                def select_from_full_catalog() -> None:
+                                def accept_catalog_item(item_id: int | None = None) -> None:
                                     selected = (
-                                        int(full_select.value)
-                                        if full_select.value is not None
-                                        else None
+                                        item_id if item_id is not None else selected_catalog_id
                                     )
+                                    if selected is None:
+                                        return
                                     full_catalog_dialog.close()
                                     choose_catalog_item(selected)
 
                                 with classic_dialog(
                                     "Select Catalog Item",
                                     accept_label="Select",
-                                    on_accept=select_from_full_catalog,
+                                    on_accept=accept_catalog_item,
                                     width="560px",
                                     submit_on_enter=False,
                                 ) as full_catalog_dialog:
-                                    with group_box("Catalog"), labeled_field("Catalog item"):
-                                        full_select = (
-                                            ui.select(
-                                                full_options,
-                                                value=line.catalog_item_id,
-                                                with_input=True,
-                                            )
-                                            .props("outlined options-dense")
-                                            .classes("w-full")
+                                    with labeled_field("Filter by name or description"):
+                                        picker_filter = (
+                                            ui.input().props("outlined clearable").classes("w-full")
                                         )
-                                    full_catalog_dialog.set_initial_focus(full_select)
+                                    full_catalog_dialog.set_initial_focus(picker_filter)
+
+                                    @ui.refreshable
+                                    def picker_list() -> None:
+                                        nonlocal selected_catalog_id
+                                        item_ids = picker_items()
+                                        if selected_catalog_id not in item_ids:
+                                            selected_catalog_id = None
+                                        if full_catalog_dialog.default_button is not None:
+                                            full_catalog_dialog.default_button.enabled = (
+                                                selected_catalog_id is not None
+                                            )
+                                        row_elements = {}
+
+                                        def select_item(item_id: int) -> None:
+                                            nonlocal selected_catalog_id
+                                            update_list_row_selection(
+                                                picker_table,
+                                                row_elements,
+                                                previous=selected_catalog_id,
+                                                selected=item_id,
+                                            )
+                                            selected_catalog_id = item_id
+                                            if full_catalog_dialog.default_button is not None:
+                                                full_catalog_dialog.default_button.enable()
+
+                                        def move_selection(offset: int) -> None:
+                                            item_id = adjacent_list_value(
+                                                item_ids, selected_catalog_id, offset
+                                            )
+                                            if item_id is None:
+                                                return
+                                            select_item(item_id)
+                                            row_elements[item_id].run_method(
+                                                "scrollIntoView", {"block": "nearest"}
+                                            )
+
+                                        with (
+                                            ui.element("div").classes(
+                                                "classic-list-panel catalog-picker-panel"
+                                            ),
+                                            ui.element("table")
+                                            .classes("classic-list catalog-picker-list")
+                                            .props('aria-label="Catalog items"') as picker_table,
+                                        ):
+                                            enable_list_keyboard(
+                                                picker_table,
+                                                on_move=move_selection,
+                                                on_activate=lambda: accept_catalog_item(),
+                                            )
+                                            with ui.element("thead"), ui.element("tr"):
+                                                with ui.element("th"):
+                                                    ui.label("Item")
+                                                with ui.element("th").style("width: 120px"):
+                                                    ui.label("Price")
+                                            with ui.element("tbody"):
+                                                if not item_ids:
+                                                    with (
+                                                        ui.element("tr"),
+                                                        ui.element("td").props("colspan=2"),
+                                                    ):
+                                                        ui.label(
+                                                            "No catalog items match this filter."
+                                                        )
+                                                for item_id in item_ids:
+                                                    item = catalog_by_id[item_id]
+                                                    row_classes = "classic-list-row"
+                                                    if item_id == selected_catalog_id:
+                                                        row_classes += " is-selected"
+                                                    if not item.active:
+                                                        row_classes += " is-inactive"
+                                                    row = ui.element("tr").classes(row_classes)
+                                                    if not item.active:
+                                                        row.props('title="Inactive catalog item"')
+                                                    row_elements[item_id] = row
+                                                    row.on(
+                                                        "click",
+                                                        lambda selected_id=item_id: select_item(
+                                                            selected_id
+                                                        ),
+                                                    ).on(
+                                                        "dblclick",
+                                                        lambda selected_id=item_id: (
+                                                            accept_catalog_item(selected_id)
+                                                        ),
+                                                    )
+                                                    with row:
+                                                        with ui.element("td"):
+                                                            ui.label(item.name).classes("font-medium")
+                                                            if item.description:
+                                                                ui.label(item.description).classes(
+                                                                    "management-item-description"
+                                                                )
+                                                        with ui.element("td"):
+                                                            price = overrides.get(
+                                                                item_id, item.base_price_cents
+                                                            )
+                                                            ui.label(display_price(price))
+
+                                    def filter_picker(
+                                        change: events.ValueChangeEventArguments[str | None],
+                                    ) -> None:
+                                        nonlocal catalog_query
+                                        catalog_query = change.value or ""
+                                        picker_list.refresh()
+
+                                    picker_filter.on_value_change(filter_picker)
+                                    picker_list()
+
+                                if full_catalog_dialog.default_button is not None:
+                                    full_catalog_dialog.default_button.enabled = (
+                                        selected_catalog_id is not None
+                                    )
+
+                                def open_catalog_picker() -> None:
+                                    nonlocal selected_catalog_id, catalog_query
+                                    selected_catalog_id = line.catalog_item_id
+                                    catalog_query = ""
+                                    picker_filter.value = ""
+                                    picker_list.refresh()
+                                    full_catalog_dialog.open()
 
                                 search_button = ui.button(
                                     icon="search",
-                                    on_click=full_catalog_dialog.open,
+                                    on_click=open_catalog_picker,
                                 ).props("flat round dense")
                                 search_button.props["aria-label"] = (
                                     f"Search catalog for line {index}"
@@ -371,7 +486,7 @@ def register_intake_page(
                                 matches = [
                                     item
                                     for item_id, item in catalog_by_id.items()
-                                    if item_id in full_options
+                                    if (item.active or item_id == line.catalog_item_id)
                                     and (
                                         query in item.name.casefold()
                                         or query in (item.description or "").casefold()

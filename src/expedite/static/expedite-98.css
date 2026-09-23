@@ -433,6 +433,37 @@ button.q-btn.classic-sort-header:active {
   min-width: 600px;
 }
 
+.catalog-picker-panel {
+  height: min(42vh, 340px);
+  max-height: none;
+}
+
+.catalog-picker-list {
+  min-width: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.catalog-picker-list thead {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  background: var(--win98-surface);
+}
+
+.catalog-picker-list th {
+  position: static;
+}
+
+.catalog-picker-list .classic-list-row {
+  scroll-margin-top: 36px;
+  scroll-margin-bottom: 4px;
+}
+
+.catalog-picker-list td {
+  height: 48px;
+}
+
 .management-price-list td {
   height: 48px;
 }

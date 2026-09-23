@@ -43,7 +43,7 @@ def register_events_page() -> None:
         ui.page_title(APP_NAME)
         status = ApplicationStatus()
 
-        with ui.column().classes("app-page w-full p-6 gap-6"):
+        with ui.column().classes("app-page events-page w-full p-6 gap-6"):
             app_data_dir = data_dir()
 
             def create_new_event() -> None:
@@ -183,7 +183,7 @@ def register_events_page() -> None:
                     configure_toolbar()
 
                 with (
-                    ui.element("div").classes("classic-list-panel"),
+                    ui.element("div").classes("classic-list-panel page-scroll-list"),
                     ui.element("table")
                     .classes("classic-list event-list")
                     .props('aria-label="Recent events"') as event_table,

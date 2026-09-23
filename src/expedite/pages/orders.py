@@ -101,7 +101,7 @@ def register_orders_page(
         def edit_order(order_id: int) -> None:
             ui.navigate.to(f"/events/{event.folder_name()}/orders/{order_id}/edit")
 
-        with ui.column().classes("app-page w-full p-6 gap-6"):
+        with ui.column().classes("app-page orders-page w-full p-6 gap-6"):
             application_menu(status, on_export=handle_export)
             event_page_header(event)
             event_navigation_tabs(event.folder_name(), "orders")
@@ -209,7 +209,7 @@ def register_orders_page(
                     order_list.refresh()
 
                 with (
-                    ui.element("div").classes("classic-list-panel"),
+                    ui.element("div").classes("classic-list-panel page-scroll-list"),
                     ui.element("table")
                     .classes("classic-list order-list")
                     .props('aria-label="Orders"') as order_table,

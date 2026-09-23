@@ -54,7 +54,7 @@ def register_event_details_page() -> None:
         state = PriceListState()
         status = ApplicationStatus(detail=event.name)
 
-        with ui.column().classes("app-page w-full p-6 gap-6"):
+        with ui.column().classes("app-page event-details-page w-full p-6 gap-6"):
             application_menu(status)
             title = event_page_header(event)
             event_navigation_tabs(folder_name, "management")
@@ -148,7 +148,7 @@ def register_event_details_page() -> None:
 
                     ui.label(f"{len(items)} item(s)").classes("text-sm text-gray-500")
                     with (
-                        ui.element("div").classes("classic-list-panel"),
+                        ui.element("div").classes("classic-list-panel page-scroll-list"),
                         ui.element("table").classes("classic-list management-price-list"),
                     ):
                         with ui.element("thead"), ui.element("tr"):

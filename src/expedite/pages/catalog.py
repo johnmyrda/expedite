@@ -186,7 +186,7 @@ def register_catalog_page() -> None:
             configure_favorite_input()
             item_dialog.open()
 
-        with ui.column().classes("app-page w-full p-6 gap-6"):
+        with ui.column().classes("app-page catalog-page w-full p-6 gap-6"):
             application_menu(status)
             with ui.row().classes("app-page-header w-full items-center justify-between"):
                 ui.label("Catalog").classes("app-page-title text-3xl font-bold")
@@ -310,7 +310,7 @@ def register_catalog_page() -> None:
                         item_list.refresh()
 
                     with (
-                        ui.element("div").classes("classic-list-panel"),
+                        ui.element("div").classes("classic-list-panel page-scroll-list"),
                         ui.element("table")
                         .classes("classic-list catalog-list")
                         .props('aria-label="Catalog items"') as catalog_table,

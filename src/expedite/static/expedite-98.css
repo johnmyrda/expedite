@@ -305,6 +305,26 @@ button.q-btn.order-submit-button .q-icon {
   box-shadow: var(--win98-sunken);
 }
 
+/* List pages use the page as their only scroll container. */
+.catalog-page,
+.event-details-page,
+.events-page,
+.orders-page {
+  overflow-x: visible;
+}
+
+.page-scroll-list {
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+}
+
+/* Keep keyboard-selected rows clear of the sticky header and fixed footer. */
+.page-scroll-list .classic-list-row {
+  scroll-margin-top: 36px;
+  scroll-margin-bottom: 40px;
+}
+
 .classic-list {
   width: 100%;
   min-width: 640px;

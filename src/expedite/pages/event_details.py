@@ -58,9 +58,10 @@ def register_event_details_page() -> None:
             application_menu(status)
             title = event_page_header(event)
             event_navigation_tabs(folder_name, "management")
+            panel = ui.column().classes("event-page-content w-full gap-4")
 
-            with ui.row().classes(
-                "event-page-content event-details-editor w-full items-end gap-3 flex-wrap"
+            with panel, ui.row().classes(
+                "event-details-editor w-full items-end gap-3 flex-wrap"
             ):
                 with labeled_field("Event name", classes="grow min-w-64"):
                     name_input = ui.input(value=event.name).props("outlined").classes("w-full")
@@ -86,7 +87,7 @@ def register_event_details_page() -> None:
 
                 ui.button("Save Details", on_click=save_details).props("color=primary")
 
-            with group_box("Catalog Price Overrides"):
+            with panel, group_box("Catalog Price Overrides"):
                 ui.label(
                     "Prices save automatically when you press Enter or leave the field. "
                     "Leave an event price blank to use the catalog base price."

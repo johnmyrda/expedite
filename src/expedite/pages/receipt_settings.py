@@ -134,6 +134,7 @@ def receipt_settings_dialog(*, on_saved: StatusUpdater) -> Callable[[], None]:
                 ui.number(
                     min=0,
                     max=MAX_LABEL_NOTES_HEIGHT_MM,
+                    precision=0,
                     step=5,
                 )
                 .props("outlined suffix=mm")

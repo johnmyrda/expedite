@@ -68,8 +68,15 @@ def application_menu(
 
 def application_status(status: ApplicationStatus) -> None:
     """Render a status bar bound to page-scoped state."""
-    with ui.row().classes("app-status-bar w-full gap-1"):
+    # Layout elements must be direct children of the page, even when called from a page column.
+    with (
+        ui.context.client.content,
+        ui.footer(fixed=True).classes("app-status-bar"),
+        ui.row().classes("w-full gap-1"),
+    ):
         ui.label().classes("status-bar-field app-status-message grow").bind_text_from(
             status, "message"
         )
-        ui.label().classes("status-bar-field app-status-detail").bind_text_from(status, "detail")
+        ui.label().classes("status-bar-field app-status-detail").bind_text_from(
+            status, "detail"
+        )

@@ -13,6 +13,11 @@ from expedite.pages.application_shell import (
     application_menu,
     application_status,
 )
+from expedite.pages.catalog_ui import (
+    catalog_item_matches,
+    compact_catalog_item,
+    effective_event_price_cents,
+)
 from expedite.pages.classic_ui import group_box, labeled_field, sortable_header
 from expedite.pages.navigation import (
     event_navigation_tabs,
@@ -110,15 +115,10 @@ def register_event_details_page() -> None:
 
                 @ui.refreshable
                 def price_list() -> None:
-                    query = state.query.strip().casefold()
                     overrides = event_catalog_prices(event)
                     items = []
                     for item in list_catalog_items():
-                        matches_text = (
-                            not query
-                            or query in item.name.casefold()
-                            or query in (item.description or "").casefold()
-                        )
+                        matches_text = catalog_item_matches(item, state.query)
                         has_override = item.id in overrides
                         matches_pricing = (
                             state.pricing == "all"
@@ -132,7 +132,7 @@ def register_event_details_page() -> None:
                     key_functions = {
                         "name": lambda item: item.name.casefold(),
                         "base_price": lambda item: item.base_price_cents,
-                        "event_price": lambda item: overrides.get(item.id, item.base_price_cents),
+                        "event_price": lambda item: effective_event_price_cents(item, overrides),
                     }
                     items.sort(
                         key=key_functions[sort_key],
@@ -190,11 +190,7 @@ def register_event_details_page() -> None:
                                     row.props('title="Event price override"')
                                 with row:
                                     with ui.element("td"):
-                                        ui.label(item.name).classes("font-medium")
-                                        if item.description:
-                                            ui.label(item.description).classes(
-                                                "management-item-description"
-                                            )
+                                        compact_catalog_item(item)
                                     with ui.element("td"):
                                         ui.label(display_price(item.base_price_cents))
                                     with ui.element("td"):

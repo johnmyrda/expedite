@@ -14,6 +14,7 @@ from expedite.pages.application_shell import (
     application_menu,
     application_status,
 )
+from expedite.pages.catalog_ui import catalog_item_matches
 from expedite.pages.classic_ui import (
     adjacent_list_value,
     classic_dialog,
@@ -54,13 +55,8 @@ def register_catalog_page() -> None:
         status = ApplicationStatus()
 
         def visible_items() -> list[CatalogItem]:
-            query = state.filter.strip().casefold()
             return [
-                item
-                for item in list_catalog_items()
-                if not query
-                or query in item.name.casefold()
-                or query in (item.description or "").casefold()
+                item for item in list_catalog_items() if catalog_item_matches(item, state.filter)
             ]
 
         def selected_item() -> CatalogItem | None:

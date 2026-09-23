@@ -485,7 +485,7 @@ button.q-btn.classic-sort-header:active {
   color: #777 !important;
 }
 
-.management-item-description {
+.catalog-item-description {
   overflow: hidden;
   color: #555;
   font-size: 11px;

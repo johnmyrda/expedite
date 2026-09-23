@@ -18,6 +18,11 @@ from expedite.pages.application_shell import (
     application_menu,
     application_status,
 )
+from expedite.pages.catalog_ui import (
+    catalog_item_matches,
+    compact_catalog_item,
+    effective_event_price_cents,
+)
 from expedite.pages.classic_ui import (
     adjacent_list_value,
     classic_dialog,
@@ -207,7 +212,7 @@ def register_intake_page(
                         line_drafts.append(line)
                     line.catalog_item_id = item_id
                     line.description = item.name
-                    price_cents = overrides.get(item_id, item.base_price_cents)
+                    price_cents = effective_event_price_cents(item, overrides)
                     line.unit_price = f"{price_cents / 100:.2f}"
                     line_editor.refresh()
                     update_total()
@@ -221,8 +226,8 @@ def register_intake_page(
                             favorite_id = favorite_item.id
                             if favorite_id is None:
                                 continue
-                            favorite_price = overrides.get(
-                                favorite_id, favorite_item.base_price_cents
+                            favorite_price = effective_event_price_cents(
+                                favorite_item, overrides
                             )
                             description = favorite_item.description or "No description"
 
@@ -253,7 +258,7 @@ def register_intake_page(
                             if item_id is not None:
                                 item = catalog_by_id[item_id]
                                 line.description = item.name
-                                cents = overrides.get(item_id, item.base_price_cents)
+                                cents = effective_event_price_cents(item, overrides)
                                 line.unit_price = f"{cents / 100:.2f}"
                             line_editor.refresh()
                             update_total()
@@ -280,9 +285,7 @@ def register_intake_page(
                                         item_id
                                         for item_id, item in catalog_by_id.items()
                                         if item.active or item_id == line.catalog_item_id
-                                        if not query
-                                        or query in item.name.casefold()
-                                        or query in (item.description or "").casefold()
+                                        if catalog_item_matches(item, query)
                                     ]
 
                                 def accept_catalog_item(item_id: int | None = None) -> None:
@@ -393,14 +396,10 @@ def register_intake_page(
                                                     )
                                                     with row:
                                                         with ui.element("td"):
-                                                            ui.label(item.name).classes("font-medium")
-                                                            if item.description:
-                                                                ui.label(item.description).classes(
-                                                                    "management-item-description"
-                                                                )
+                                                            compact_catalog_item(item)
                                                         with ui.element("td"):
-                                                            price = overrides.get(
-                                                                item_id, item.base_price_cents
+                                                            price = effective_event_price_cents(
+                                                                item, overrides
                                                             )
                                                             ui.label(display_price(price))
 
@@ -487,10 +486,7 @@ def register_intake_page(
                                     item
                                     for item_id, item in catalog_by_id.items()
                                     if (item.active or item_id == line.catalog_item_id)
-                                    and (
-                                        query in item.name.casefold()
-                                        or query in (item.description or "").casefold()
-                                    )
+                                    and catalog_item_matches(item, query)
                                 ][:5]
                                 if not matches:
                                     return
@@ -501,7 +497,7 @@ def register_intake_page(
 
                                     def render_suggestion(item_id: int) -> None:
                                         item = catalog_by_id[item_id]
-                                        price = overrides.get(item_id, item.base_price_cents)
+                                        price = effective_event_price_cents(item, overrides)
                                         ui.button(
                                             f"{item.name} · {display_price(price)}",
                                             on_click=lambda: choose_catalog_item(item_id),

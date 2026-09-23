@@ -41,8 +41,8 @@ def application_menu(
         accept_label="OK",
         cancel_label=None,
         width="380px",
+        footer_text="© 2026 John Myrda",
     ) as about_dialog:
-        ui.label(APP_NAME).classes("classic-about-name")
         ui.label("Event order and receipt management").classes("text-sm")
 
     with ui.row().classes("app-menu-bar w-full items-center gap-0"):

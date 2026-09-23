@@ -94,28 +94,20 @@ class ClassicDialog:
     default_button: Button | None = None
     initial_focus: Element | None = None
 
+    def __post_init__(self) -> None:
+        self.element.on("show", self._focus_initial_control)
+
+    def _focus_initial_control(self) -> None:
+        if self.initial_focus is not None:
+            self.initial_focus.run_method("focus")
+
     def set_initial_focus(self, element: Element) -> None:
         """Set the control which receives focus when the dialog opens."""
         self.initial_focus = element
 
     def open(self) -> None:
-        """Open the dialog and move focus to its initial control."""
+        """Open the dialog; its show event moves focus to the initial control."""
         self.element.open()
-        target = self.initial_focus or self.default_button
-        if target is not None:
-            ui.timer(
-                0.1,
-                lambda: ui.run_javascript(
-                    f"""
-                    const root = document.getElementById('{target.html_id}');
-                    const control = root?.matches('input, select, textarea, button')
-                        ? root
-                        : root?.querySelector('input, select, textarea, button');
-                    control?.focus();
-                    """
-                ),
-                once=True,
-            )
 
     def close(self) -> None:
         """Close the dialog."""
@@ -131,6 +123,7 @@ def classic_dialog(
     on_accept: Callable[[], object] | None = None,
     width: str = "520px",
     submit_on_enter: bool = True,
+    footer_text: str | None = None,
 ) -> Iterator[ClassicDialog]:
     """Render a classic modal with standard actions and optional Enter submission."""
     dialog = ui.dialog()
@@ -153,10 +146,16 @@ def classic_dialog(
         with ui.column().classes("classic-dialog-body w-full"):
             yield controller
         ui.separator()
-        with ui.row().classes("classic-dialog-actions w-full justify-end gap-2"):
+        with ui.row().classes("classic-dialog-actions w-full items-center gap-2"):
+            if footer_text is not None:
+                ui.label(footer_text).classes("text-sm")
+            ui.space()
+            default_button_props = "color=primary"
+            if controller.initial_focus is None:
+                default_button_props += " autofocus"
             controller.default_button = (
                 ui.button(accept_label, on_click=accept)
-                .props("color=primary")
+                .props(default_button_props)
                 .classes("classic-default-button")
             )
             if cancel_label is not None:

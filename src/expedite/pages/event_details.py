@@ -22,7 +22,6 @@ from expedite.storage.sqlite_store import (
     save_event,
     save_event_catalog_price,
 )
-from expedite.theme import apply_windows_98_theme
 
 PricingFilter = Literal["all", "overridden", "base"]
 PriceSortKey = Literal["name", "base_price", "event_price"]
@@ -41,7 +40,6 @@ class PriceListState:
 def register_event_details_page() -> None:
     @ui.page("/events/{folder_name}/manage")
     def event_details_page(folder_name: str) -> None:
-        apply_windows_98_theme()
         loaded_event = get_event(folder_name)
         if loaded_event is None:
             status = ApplicationStatus("Event not found")
@@ -247,13 +245,7 @@ def register_event_details_page() -> None:
                                         status.update(message, item_name)
 
                                     price_input.on("blur", save_override)
-                                    price_input.on(
-                                        "keydown",
-                                        js_handler=(
-                                            "(event) => { if (event.key === 'Enter') {"
-                                            " event.preventDefault(); event.target.blur(); } }"
-                                        ),
-                                    )
+                                    price_input.on("keydown.enter.prevent", save_override)
 
                 def handle_filter_change(
                     change: events.ValueChangeEventArguments[str | None],

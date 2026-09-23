@@ -89,34 +89,26 @@ def receipt_settings_dialog(*, on_saved: StatusUpdater) -> Callable[[], None]:
                 ui.input(value=PRINTER_NAME).props("outlined readonly").classes("w-full")
 
         with group_box("Logo"):
-            logo_upload = (
-                ui.upload(
-                    auto_upload=True,
-                    max_file_size=MAX_LOGO_BYTES,
-                    on_upload=upload_logo,
-                    on_rejected=lambda: ui.notify(
-                        "Logo must be a PNG file no larger than 5 MB.",
-                        type="negative",
-                    ),
-                )
-                .props("accept=.png")
-                .classes("hidden")
-            )
             with (
                 labeled_field("File"),
                 ui.row().classes("classic-file-row w-full items-center gap-2 flex-nowrap"),
             ):
                 filename_input = ui.input().props("outlined readonly").classes("grow min-w-0")
-                browse_button = ui.button("Browse...").props("flat")
+                logo_upload = (
+                    ui.upload(
+                        label="Browse...",
+                        auto_upload=True,
+                        max_file_size=MAX_LOGO_BYTES,
+                        on_upload=upload_logo,
+                        on_rejected=lambda: ui.notify(
+                            "Logo must be a PNG file no larger than 5 MB.",
+                            type="negative",
+                        ),
+                    )
+                    .props("accept=.png")
+                    .classes("classic-logo-upload")
+                )
                 remove_button = ui.button("Remove", on_click=remove_logo).props("flat")
-            browse_button.on(
-                "click",
-                js_handler=(
-                    "() => document.getElementById('"
-                    f"{logo_upload.html_id}"
-                    "')?.querySelector('input[type=file]')?.click()"
-                ),
-            )
 
             @ui.refreshable
             def logo_preview() -> None:

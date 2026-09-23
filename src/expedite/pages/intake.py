@@ -31,7 +31,6 @@ from expedite.storage.sqlite_store import (
     next_order_id,
     update_order,
 )
-from expedite.theme import apply_windows_98_theme
 from expedite.validation import validate_name, validate_phone
 
 
@@ -58,7 +57,6 @@ def register_intake_page(
             application_status(status)
 
     def render_intake_page(folder_name: str, edit_order_id: int | None = None) -> None:
-        apply_windows_98_theme()
         event = get_event(folder_name)
         if event is None:
             show_event_not_found()

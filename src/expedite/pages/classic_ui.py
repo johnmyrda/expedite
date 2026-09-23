@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from nicegui import ui
 from nicegui.element import Element
 from nicegui.elements.button import Button
+from nicegui.elements.checkbox import Checkbox
 from nicegui.elements.dialog import Dialog
+from nicegui.elements.input import Input
+from nicegui.elements.number import Number
+from nicegui.elements.select import Select
+from nicegui.elements.textarea import Textarea
 
 
 @contextmanager
@@ -47,43 +52,17 @@ def sortable_header(
     )
 
 
-def enable_list_keyboard(list_element: Element) -> None:
-    """Enable classic Up/Down selection and Enter activation on a list table."""
+def enable_list_keyboard(
+    list_element: Element,
+    *,
+    on_move: Callable[[int], None],
+    on_activate: Callable[[], None],
+) -> None:
+    """Enable server-side Up/Down selection and Enter activation on a list table."""
     list_element.props("tabindex=0")
-    list_element.on(
-        "click",
-        js_handler=(
-            "(event) => { if (event.target.closest('.classic-list-row')) "
-            "event.currentTarget.focus(); }"
-        ),
-    )
-    list_element.on(
-        "keydown",
-        js_handler="""
-        (event) => {
-            if (event.target !== event.currentTarget) return;
-            const rows = [...event.currentTarget.querySelectorAll('.classic-list-row')];
-            if (!rows.length) return;
-            const selectedIndex = rows.findIndex(row => row.classList.contains('is-selected'));
-            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-                event.preventDefault();
-                const offset = event.key === 'ArrowDown' ? 1 : -1;
-                const fallback = event.key === 'ArrowDown' ? 0 : rows.length - 1;
-                const nextIndex = selectedIndex < 0
-                    ? fallback
-                    : Math.min(Math.max(selectedIndex + offset, 0), rows.length - 1);
-                rows[nextIndex].click();
-                rows[nextIndex].scrollIntoView({block: 'nearest'});
-            } else if (event.key === 'Enter' && selectedIndex >= 0) {
-                event.preventDefault();
-                rows[selectedIndex].dispatchEvent(new MouseEvent('dblclick', {
-                    bubbles: true,
-                    cancelable: true,
-                }));
-            }
-        }
-        """,
-    )
+    list_element.on("keydown.arrow-down.prevent", lambda: on_move(1))
+    list_element.on("keydown.arrow-up.prevent", lambda: on_move(-1))
+    list_element.on("keydown.enter.prevent", on_activate)
 
 
 @dataclass
@@ -162,16 +141,9 @@ def classic_dialog(
                 ui.button(cancel_label, on_click=dialog.close).props("flat")
 
         if submit_on_enter:
-            card.on(
-                "keydown",
-                js_handler=(
-                    "(event) => {"
-                    " if (event.key === 'Enter'"
-                    " && event.target.tagName !== 'TEXTAREA'"
-                    " && event.target.tagName !== 'BUTTON') {"
-                    " event.preventDefault();"
-                    f" document.getElementById('{controller.default_button.html_id}')?.click();"
-                    " }"
-                    "}"
-                ),
-            )
+            enter_submit_controls = (Input, Number, Select, Checkbox)
+            for element in card.descendants():
+                if isinstance(element, enter_submit_controls) and not isinstance(
+                    element, Textarea
+                ):
+                    element.on("keydown.enter.prevent", accept)

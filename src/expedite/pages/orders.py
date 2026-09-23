@@ -21,7 +21,6 @@ from expedite.pages.navigation import event_navigation_tabs, event_page_header
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import export_orders_csv, list_order_records
-from expedite.theme import apply_windows_98_theme
 
 OrderSortKey = Literal["order_id", "timestamp", "name", "phone", "work_request", "cost"]
 
@@ -46,7 +45,6 @@ def register_orders_page(
 ) -> None:
     @ui.page("/events/{folder_name}/orders")
     def orders_page(folder_name: str) -> None:
-        apply_windows_98_theme()
         event = get_event(folder_name)
         if event is None:
             status = ApplicationStatus("Event not found")
@@ -147,8 +145,27 @@ def register_orders_page(
                         row_elements[previous_id].classes(remove="is-selected")
                     state.selected_order_id = order_id
                     row_elements[order_id].classes(add="is-selected")
+                    order_table.run_method("focus")
                     configure_toolbar()
                     update_status()
+
+                def move_selection(offset: int) -> None:
+                    ordered_orders = sorted_orders()
+                    if not ordered_orders:
+                        return
+                    order_ids = [order.order_id for order in ordered_orders]
+                    selected_order_id = state.selected_order_id
+                    if selected_order_id is None:
+                        selected_index = -1 if offset > 0 else len(order_ids)
+                    else:
+                        try:
+                            selected_index = order_ids.index(selected_order_id)
+                        except ValueError:
+                            selected_index = -1 if offset > 0 else len(order_ids)
+                    next_index = min(max(selected_index + offset, 0), len(order_ids) - 1)
+                    order_id = order_ids[next_index]
+                    select_order(order_id)
+                    row_elements[order_id].run_method("scrollIntoView", {"block": "nearest"})
 
                 def edit_selected_order() -> None:
                     order = selected_order()
@@ -200,7 +217,11 @@ def register_orders_page(
                     .classes("classic-list order-list")
                     .props('aria-label="Orders"') as order_table,
                 ):
-                    enable_list_keyboard(order_table)
+                    enable_list_keyboard(
+                        order_table,
+                        on_move=move_selection,
+                        on_activate=edit_selected_order,
+                    )
                     with ui.element("thead"), ui.element("tr"):
                         for heading, key, width in (
                             ("ID", "order_id", "70px"),

@@ -22,7 +22,6 @@ from expedite.pages.classic_ui import (
     sortable_header,
 )
 from expedite.storage.events import create_event, list_events
-from expedite.theme import apply_windows_98_theme
 
 EventSortKey = Literal["name", "start_date", "folder"]
 
@@ -39,7 +38,6 @@ class EventsPageState:
 def register_events_page() -> None:
     @ui.page("/")
     def events_page() -> None:
-        apply_windows_98_theme()
         ui.page_title(APP_NAME)
         status = ApplicationStatus()
 
@@ -146,8 +144,29 @@ def register_events_page() -> None:
                         row_elements[previous].classes(remove="is-selected")
                     state.selected_folder = folder_name
                     row_elements[folder_name].classes(add="is-selected")
+                    event_table.run_method("focus")
                     configure_toolbar()
                     update_status()
+
+                def move_selection(offset: int) -> None:
+                    ordered_events = sorted_events()
+                    if not ordered_events:
+                        return
+                    folders = [event.folder_name() for event in ordered_events]
+                    selected_folder = state.selected_folder
+                    if selected_folder is None:
+                        selected_index = -1 if offset > 0 else len(folders)
+                    else:
+                        try:
+                            selected_index = folders.index(selected_folder)
+                        except ValueError:
+                            selected_index = -1 if offset > 0 else len(folders)
+                    next_index = min(max(selected_index + offset, 0), len(folders) - 1)
+                    folder_name = folders[next_index]
+                    select_event(folder_name)
+                    row_elements[folder_name].run_method(
+                        "scrollIntoView", {"block": "nearest"}
+                    )
 
                 with ui.row().classes("classic-list-toolbar w-full items-center gap-1"):
                     intake_button = ui.button(
@@ -176,7 +195,11 @@ def register_events_page() -> None:
                     .classes("classic-list event-list")
                     .props('aria-label="Recent events"') as event_table,
                 ):
-                    enable_list_keyboard(event_table)
+                    enable_list_keyboard(
+                        event_table,
+                        on_move=move_selection,
+                        on_activate=lambda: navigate_selected(),
+                    )
 
                     @ui.refreshable
                     def event_table_contents() -> None:

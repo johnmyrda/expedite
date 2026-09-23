@@ -4,7 +4,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: local("Tahoma"), url("wine_tahoma.ttf") format("truetype");
+  src: local("Tahoma"), url("/expedite-static/wine_tahoma.ttf") format("truetype");
 }
 
 @font-face {
@@ -12,7 +12,7 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: local("Tahoma Bold"), url("wine_tahoma_bold.ttf") format("truetype");
+  src: local("Tahoma Bold"), url("/expedite-static/wine_tahoma_bold.ttf") format("truetype");
 }
 
 :root {
@@ -749,6 +749,61 @@ button.q-btn.classic-default-button {
   color: white !important;
   background: linear-gradient(90deg, var(--win98-blue), var(--win98-blue-light)) !important;
   border-radius: 0 !important;
+}
+
+.classic-logo-upload {
+  width: 90px;
+  min-width: 90px;
+  height: 30px;
+  max-height: 30px;
+  overflow: hidden;
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+}
+
+.classic-logo-upload:has(.q-btn:active) {
+  box-shadow: var(--win98-sunken) !important;
+  transform: translate(1px, 1px);
+}
+
+.classic-logo-upload:has(.q-btn:focus-visible) {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+.classic-logo-upload .q-uploader__header {
+  position: relative;
+  min-height: 30px;
+  padding: 0 12px;
+  color: #222 !important;
+  background: transparent !important;
+}
+
+.classic-logo-upload .q-uploader__title {
+  overflow: visible;
+  font-size: 13px;
+  line-height: 30px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.classic-logo-upload .q-uploader__subtitle,
+.classic-logo-upload .q-icon {
+  display: none;
+}
+
+.classic-logo-upload .q-uploader__header .q-btn {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.classic-logo-upload .q-uploader__list {
+  display: none;
 }
 
 .q-notification {

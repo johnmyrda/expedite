@@ -28,7 +28,6 @@ from expedite.storage.sqlite_store import (
     save_catalog_item,
     set_catalog_item_favorite,
 )
-from expedite.theme import apply_windows_98_theme
 
 CatalogSortKey = Literal["favorite", "name", "description", "price"]
 
@@ -47,7 +46,6 @@ class CatalogPageState:
 def register_catalog_page() -> None:
     @ui.page("/catalog")
     def catalog_page() -> None:
-        apply_windows_98_theme()
         ui.page_title(f"{APP_NAME} - Catalog")
 
         state = CatalogPageState()
@@ -233,6 +231,7 @@ def register_catalog_page() -> None:
                         state.selected_id = item_id
                         if item_id in row_elements:
                             row_elements[item_id].classes(add="is-selected")
+                            catalog_table.run_method("focus")
                         configure_toolbar()
                         update_status()
 
@@ -248,6 +247,25 @@ def register_catalog_page() -> None:
                             return
                         select_item(selected_id)
                         open_item_dialog(item)
+
+                    def move_selection(offset: int) -> None:
+                        item_ids = [item.id for item in items if item.id is not None]
+                        if not item_ids:
+                            return
+                        selected_id = state.selected_id
+                        if selected_id is None:
+                            selected_index = -1 if offset > 0 else len(item_ids)
+                        else:
+                            try:
+                                selected_index = item_ids.index(selected_id)
+                            except ValueError:
+                                selected_index = -1 if offset > 0 else len(item_ids)
+                        next_index = min(max(selected_index + offset, 0), len(item_ids) - 1)
+                        item_id = item_ids[next_index]
+                        select_item(item_id)
+                        row_elements[item_id].run_method(
+                            "scrollIntoView", {"block": "nearest"}
+                        )
 
                     def set_favorite(item: CatalogItem, favorite: bool) -> None:
                         if item.id is None:
@@ -303,7 +321,11 @@ def register_catalog_page() -> None:
                         .classes("classic-list catalog-list")
                         .props('aria-label="Catalog items"') as catalog_table,
                     ):
-                        enable_list_keyboard(catalog_table)
+                        enable_list_keyboard(
+                            catalog_table,
+                            on_move=move_selection,
+                            on_activate=lambda: start_edit(),
+                        )
                         with ui.element("thead"), ui.element("tr"):
                             for heading, column_key, width in (
                                 ("Favorite", "favorite", "86px"),
@@ -358,14 +380,7 @@ def register_catalog_page() -> None:
                                             ui.button("★" if is_favorite else "☆")
                                             .props("flat round dense")
                                             .classes("classic-favorite-button")
-                                            .on(
-                                                "click",
-                                                handle_favorite,
-                                                js_handler=(
-                                                    "(event) => { "
-                                                    "event.stopPropagation(); emit(); }"
-                                                ),
-                                            )
+                                            .on("click.stop", handle_favorite)
                                         )
                                         favorite_action = (
                                             "Remove from intake favorites"

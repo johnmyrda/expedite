@@ -8,8 +8,23 @@ from nicegui.elements.tabs import Tab, TabPanel
 
 from expedite.local_files import open_local_path
 from expedite.models import Event
+from expedite.pages.application_shell import (
+    ApplicationStatus,
+    application_menu,
+    application_status,
+)
 
 EventTab = Literal["intake", "orders", "management"]
+
+
+def event_not_found_page() -> None:
+    """Render the shared missing-event page content."""
+    status = ApplicationStatus("Event not found")
+    with ui.column().classes("app-page w-full p-6 gap-4"):
+        application_menu(status)
+        ui.label("Event not found").classes("text-2xl font-bold text-negative")
+        ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
+        application_status(status)
 
 
 def event_page_header(event: Event) -> Label:

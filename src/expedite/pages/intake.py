@@ -19,7 +19,11 @@ from expedite.pages.application_shell import (
     application_status,
 )
 from expedite.pages.classic_ui import classic_dialog, group_box, labeled_field
-from expedite.pages.navigation import event_navigation_tabs, event_page_header
+from expedite.pages.navigation import (
+    event_navigation_tabs,
+    event_not_found_page,
+    event_page_header,
+)
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
@@ -48,18 +52,10 @@ def register_intake_page(
     *,
     print_label_fn: Callable[[Path], str] = print_label,
 ) -> None:
-    def show_event_not_found() -> None:
-        status = ApplicationStatus("Event not found")
-        with ui.column().classes("app-page w-full p-6 gap-4"):
-            application_menu(status)
-            ui.label("Event not found").classes("text-2xl font-bold text-negative")
-            ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
-            application_status(status)
-
     def render_intake_page(folder_name: str, edit_order_id: int | None = None) -> None:
         event = get_event(folder_name)
         if event is None:
-            show_event_not_found()
+            event_not_found_page()
             return
 
         existing_order = get_order(event, edit_order_id) if edit_order_id else None

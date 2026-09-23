@@ -16,8 +16,17 @@ from expedite.pages.application_shell import (
     application_menu,
     application_status,
 )
-from expedite.pages.classic_ui import enable_list_keyboard, sortable_header
-from expedite.pages.navigation import event_navigation_tabs, event_page_header
+from expedite.pages.classic_ui import (
+    adjacent_list_value,
+    enable_list_keyboard,
+    sortable_header,
+    update_list_row_selection,
+)
+from expedite.pages.navigation import (
+    event_navigation_tabs,
+    event_not_found_page,
+    event_page_header,
+)
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import export_orders_csv, list_order_records
@@ -47,12 +56,7 @@ def register_orders_page(
     def orders_page(folder_name: str) -> None:
         event = get_event(folder_name)
         if event is None:
-            status = ApplicationStatus("Event not found")
-            with ui.column().classes("app-page w-full p-6 gap-4"):
-                application_menu(status)
-                ui.label("Event not found").classes("text-2xl font-bold text-negative")
-                ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
-                application_status(status)
+            event_not_found_page()
             return
 
         ui.page_title(f"{event.name} - Orders")
@@ -140,30 +144,23 @@ def register_orders_page(
                         print_button.tooltip(f"Print on {PRINTER_NAME}")
 
                 def select_order(order_id: int) -> None:
-                    previous_id = state.selected_order_id
-                    if previous_id in row_elements:
-                        row_elements[previous_id].classes(remove="is-selected")
+                    update_list_row_selection(
+                        order_table,
+                        row_elements,
+                        previous=state.selected_order_id,
+                        selected=order_id,
+                    )
                     state.selected_order_id = order_id
-                    row_elements[order_id].classes(add="is-selected")
-                    order_table.run_method("focus")
                     configure_toolbar()
                     update_status()
 
                 def move_selection(offset: int) -> None:
-                    ordered_orders = sorted_orders()
-                    if not ordered_orders:
+                    order_ids = [order.order_id for order in sorted_orders()]
+                    order_id = adjacent_list_value(
+                        order_ids, state.selected_order_id, offset
+                    )
+                    if order_id is None:
                         return
-                    order_ids = [order.order_id for order in ordered_orders]
-                    selected_order_id = state.selected_order_id
-                    if selected_order_id is None:
-                        selected_index = -1 if offset > 0 else len(order_ids)
-                    else:
-                        try:
-                            selected_index = order_ids.index(selected_order_id)
-                        except ValueError:
-                            selected_index = -1 if offset > 0 else len(order_ids)
-                    next_index = min(max(selected_index + offset, 0), len(order_ids) - 1)
-                    order_id = order_ids[next_index]
                     select_order(order_id)
                     row_elements[order_id].run_method("scrollIntoView", {"block": "nearest"})
 

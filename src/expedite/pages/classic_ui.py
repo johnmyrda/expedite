@@ -1,8 +1,9 @@
 """Reusable Windows-classic presentation components."""
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import TypeVar
 
 from nicegui import ui
 from nicegui.element import Element
@@ -13,6 +14,8 @@ from nicegui.elements.input import Input
 from nicegui.elements.number import Number
 from nicegui.elements.select import Select
 from nicegui.elements.textarea import Textarea
+
+ListRowKey = TypeVar("ListRowKey")
 
 
 @contextmanager
@@ -50,6 +53,39 @@ def sortable_header(
     button.props["aria-label"] = (
         f"Sort by {label}" if not active else f"Sort by {label}, currently {direction}"
     )
+
+
+def adjacent_list_value(
+    values: Sequence[ListRowKey],
+    selected: ListRowKey | None,
+    offset: int,
+) -> ListRowKey | None:
+    """Return the adjacent value, clamped to the ends of a keyboard-navigable list."""
+    if not values:
+        return None
+    if selected is None:
+        selected_index = -1 if offset > 0 else len(values)
+    else:
+        try:
+            selected_index = values.index(selected)
+        except ValueError:
+            selected_index = -1 if offset > 0 else len(values)
+    next_index = min(max(selected_index + offset, 0), len(values) - 1)
+    return values[next_index]
+
+
+def update_list_row_selection(
+    list_element: Element,
+    row_elements: Mapping[ListRowKey, Element],
+    *,
+    previous: ListRowKey | None,
+    selected: ListRowKey,
+) -> None:
+    """Update classic row styling and return keyboard focus to its list."""
+    if previous is not None and previous in row_elements:
+        row_elements[previous].classes(remove="is-selected")
+    row_elements[selected].classes(add="is-selected")
+    list_element.run_method("focus")
 
 
 def enable_list_keyboard(

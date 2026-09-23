@@ -15,11 +15,13 @@ from expedite.pages.application_shell import (
     application_status,
 )
 from expedite.pages.classic_ui import (
+    adjacent_list_value,
     classic_dialog,
     enable_list_keyboard,
     group_box,
     labeled_field,
     sortable_header,
+    update_list_row_selection,
 )
 from expedite.storage.sqlite_store import (
     MAX_CATALOG_FAVORITES,
@@ -225,13 +227,14 @@ def register_catalog_page() -> None:
                         active_button.enabled = item is not None
 
                     def select_item(item_id: int | None) -> None:
-                        previous_id = state.selected_id
-                        if previous_id in row_elements:
-                            row_elements[previous_id].classes(remove="is-selected")
+                        if item_id is not None:
+                            update_list_row_selection(
+                                catalog_table,
+                                row_elements,
+                                previous=state.selected_id,
+                                selected=item_id,
+                            )
                         state.selected_id = item_id
-                        if item_id in row_elements:
-                            row_elements[item_id].classes(add="is-selected")
-                            catalog_table.run_method("focus")
                         configure_toolbar()
                         update_status()
 
@@ -250,18 +253,9 @@ def register_catalog_page() -> None:
 
                     def move_selection(offset: int) -> None:
                         item_ids = [item.id for item in items if item.id is not None]
-                        if not item_ids:
+                        item_id = adjacent_list_value(item_ids, state.selected_id, offset)
+                        if item_id is None:
                             return
-                        selected_id = state.selected_id
-                        if selected_id is None:
-                            selected_index = -1 if offset > 0 else len(item_ids)
-                        else:
-                            try:
-                                selected_index = item_ids.index(selected_id)
-                            except ValueError:
-                                selected_index = -1 if offset > 0 else len(item_ids)
-                        next_index = min(max(selected_index + offset, 0), len(item_ids) - 1)
-                        item_id = item_ids[next_index]
                         select_item(item_id)
                         row_elements[item_id].run_method(
                             "scrollIntoView", {"block": "nearest"}

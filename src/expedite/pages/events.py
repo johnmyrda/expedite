@@ -15,11 +15,13 @@ from expedite.pages.application_shell import (
     application_status,
 )
 from expedite.pages.classic_ui import (
+    adjacent_list_value,
     classic_dialog,
     enable_list_keyboard,
     group_box,
     labeled_field,
     sortable_header,
+    update_list_row_selection,
 )
 from expedite.storage.events import create_event, list_events
 
@@ -139,30 +141,21 @@ def register_events_page() -> None:
                     management_button.enabled = enabled
 
                 def select_event(folder_name: str) -> None:
-                    previous = state.selected_folder
-                    if previous in row_elements:
-                        row_elements[previous].classes(remove="is-selected")
+                    update_list_row_selection(
+                        event_table,
+                        row_elements,
+                        previous=state.selected_folder,
+                        selected=folder_name,
+                    )
                     state.selected_folder = folder_name
-                    row_elements[folder_name].classes(add="is-selected")
-                    event_table.run_method("focus")
                     configure_toolbar()
                     update_status()
 
                 def move_selection(offset: int) -> None:
-                    ordered_events = sorted_events()
-                    if not ordered_events:
+                    folders = [event.folder_name() for event in sorted_events()]
+                    folder_name = adjacent_list_value(folders, state.selected_folder, offset)
+                    if folder_name is None:
                         return
-                    folders = [event.folder_name() for event in ordered_events]
-                    selected_folder = state.selected_folder
-                    if selected_folder is None:
-                        selected_index = -1 if offset > 0 else len(folders)
-                    else:
-                        try:
-                            selected_index = folders.index(selected_folder)
-                        except ValueError:
-                            selected_index = -1 if offset > 0 else len(folders)
-                    next_index = min(max(selected_index + offset, 0), len(folders) - 1)
-                    folder_name = folders[next_index]
                     select_event(folder_name)
                     row_elements[folder_name].run_method(
                         "scrollIntoView", {"block": "nearest"}

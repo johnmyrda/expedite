@@ -14,7 +14,11 @@ from expedite.pages.application_shell import (
     application_status,
 )
 from expedite.pages.classic_ui import group_box, labeled_field, sortable_header
-from expedite.pages.navigation import event_navigation_tabs, event_page_header
+from expedite.pages.navigation import (
+    event_navigation_tabs,
+    event_not_found_page,
+    event_page_header,
+)
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
     event_catalog_prices,
@@ -42,12 +46,7 @@ def register_event_details_page() -> None:
     def event_details_page(folder_name: str) -> None:
         loaded_event = get_event(folder_name)
         if loaded_event is None:
-            status = ApplicationStatus("Event not found")
-            with ui.column().classes("app-page w-full p-6 gap-4"):
-                application_menu(status)
-                ui.label("Event not found").classes("text-2xl font-bold text-negative")
-                ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
-                application_status(status)
+            event_not_found_page()
             return
 
         event: Event = loaded_event

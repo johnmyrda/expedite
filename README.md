@@ -23,6 +23,17 @@ recreates missing event folders and their `labels/` subdirectories from database
 events are listed or opened. Previously generated CSV and PNG files remain separate filesystem
 artifacts.
 
+## Interface theme
+
+The desktop interface uses a locally vendored copy of
+[98.css](https://jdan.github.io/98.css/) with a NiceGUI/Quasar compatibility layer for clear,
+high-contrast controls. The interface prefers the system Tahoma font and includes Wine Tahoma
+fallbacks for systems where Tahoma is unavailable. Pages fill the native application viewport
+without simulating an additional desktop window or title bar. Theme assets are
+packaged with the
+application and do not require internet access. The upstream MIT license is included at
+`src/expedite/static/98.css.LICENSE`.
+
 ## Catalog favorites
 
 Use the star buttons on the Catalog page to favorite up to 10 active items. Favorites appear as
@@ -52,8 +63,7 @@ Notes area. The Notes area defaults to 60 mm. Use the settings button on the Eve
 its height from 0 to 200 mm, customize the receipt name, and upload or remove a PNG logo up to 5 MB.
 Logos are scaled to fit the receipt while preserving their aspect ratio. These application-wide
 branding settings are stored in SQLite, travel with database backups, and apply to newly generated
-receipts. `EXPEDITE_LABEL_NOTES_HEIGHT_MM` can override the initial Notes default before a value has
-been saved in the UI.
+receipts.
 
 ## Packaging
 

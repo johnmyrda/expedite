@@ -43,7 +43,7 @@ def test_notes_area_adds_configured_height(
     monkeypatch.setattr(
         label,
         "receipt_settings",
-        lambda: ReceiptSettings(name="EXPEDITE", notes_height_mm=30.0, logo_png=None),
+        lambda: ReceiptSettings(name="EXPEDITE", notes_height_mm=30, logo_png=None),
     )
     receipt_path = label.render_label(order)
     with Image.open(receipt_path) as receipt:
@@ -52,7 +52,7 @@ def test_notes_area_adds_configured_height(
     monkeypatch.setattr(
         label,
         "receipt_settings",
-        lambda: ReceiptSettings(name="EXPEDITE", notes_height_mm=0.0, logo_png=None),
+        lambda: ReceiptSettings(name="EXPEDITE", notes_height_mm=0, logo_png=None),
     )
     receipt_path = label.render_label(order)
     with Image.open(receipt_path) as receipt:

@@ -1,119 +1,280 @@
 """Order listing page for an event."""
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from nicegui import run, ui
 
 from expedite.config import PRINTER_NAME
 from expedite.local_files import open_local_path
+from expedite.models import OrderRecord
+from expedite.pages.application_shell import (
+    ApplicationStatus,
+    application_menu,
+    application_status,
+)
+from expedite.pages.classic_ui import (
+    adjacent_list_value,
+    enable_list_keyboard,
+    sortable_header,
+    update_list_row_selection,
+)
+from expedite.pages.navigation import (
+    event_navigation_tabs,
+    event_not_found_page,
+    event_page_header,
+)
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import export_orders_csv, list_order_records
+
+OrderSortKey = Literal["order_id", "timestamp", "name", "phone", "work_request", "cost"]
+
+
+@dataclass
+class OrdersPageState:
+    """Mutable selection and sorting state for an event's orders."""
+
+    selected_order_id: int | None = None
+    sort_key: OrderSortKey = "order_id"
+    sort_descending: bool = True
+    is_printing: bool = False
 
 
 def display_timestamp(value: datetime) -> str:
     return value.astimezone().isoformat(timespec="minutes").replace("T", " ")
 
 
-def register_orders_page() -> None:
+def register_orders_page(
+    *,
+    print_label_fn: Callable[[Path], str] = print_label,
+) -> None:
     @ui.page("/events/{folder_name}/orders")
     def orders_page(folder_name: str) -> None:
         event = get_event(folder_name)
         if event is None:
-            with ui.column().classes("w-full max-w-2xl mx-auto p-6 gap-4"):
-                ui.label("Event not found").classes("text-2xl font-bold text-negative")
-                ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
+            event_not_found_page()
             return
 
         ui.page_title(f"{event.name} - Orders")
         orders = list_order_records(event)
+        state = OrdersPageState()
+        status = ApplicationStatus()
+
+        def sorted_orders() -> list[OrderRecord]:
+            def cost_value(order: OrderRecord) -> float:
+                try:
+                    return float(order.cost)
+                except (TypeError, ValueError):
+                    return 0
+
+            key = state.sort_key
+            key_functions = {
+                "order_id": lambda order: order.order_id,
+                "timestamp": lambda order: order.timestamp.timestamp(),
+                "name": lambda order: order.name.casefold(),
+                "phone": lambda order: order.phone,
+                "work_request": lambda order: order.work_request.casefold(),
+                "cost": cost_value,
+            }
+            return sorted(
+                orders,
+                key=key_functions[key],
+                reverse=state.sort_descending,
+            )
 
         async def print_label_image(path: Path) -> None:
             try:
-                printer_name = await run.io_bound(print_label, path)
+                printer_name = await run.io_bound(print_label_fn, path)
             except PrintError as error:
                 ui.notify(str(error), type="negative", multi_line=True)
             else:
-                ui.notify(f"Sent label to {printer_name}", type="positive")
+                status.update("Label sent to printer", printer_name)
 
-        with ui.column().classes("w-full max-w-6xl mx-auto p-6 gap-6"):
-            with ui.row().classes("w-full items-center justify-between"):
-                with ui.row().classes("items-center gap-2"):
-                    ui.label(f"{event.name} Orders").classes("text-3xl font-bold")
-                    ui.button(
-                        icon="folder_open",
-                        on_click=lambda: open_local_path(event.path),
-                    ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
-                with ui.row().classes("gap-2"):
+        def handle_export() -> None:
+            path = export_orders_csv(event)
+            status.update("Orders exported", path.name)
 
-                    def handle_export() -> None:
-                        path = export_orders_csv(event)
-                        ui.notify(f"Exported orders to {path.name}", type="positive")
+        def edit_order(order_id: int) -> None:
+            ui.navigate.to(f"/events/{event.folder_name()}/orders/{order_id}/edit")
 
-                    ui.button(
-                        "Export to CSV",
-                        icon="download",
-                        on_click=handle_export,
-                    ).props("flat")
-                    ui.button(
-                        "Manage",
-                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/manage"),
-                    ).props("flat")
-                    ui.button(
-                        "Intake",
-                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}"),
-                    ).props("flat")
-                    ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
+        with ui.column().classes("app-page orders-page w-full p-6 gap-6"):
+            application_menu(status, on_export=handle_export)
+            event_page_header(event)
+            event_navigation_tabs(event.folder_name(), "orders")
 
-            if not orders:
-                with ui.card().classes("w-full"):
-                    ui.label("No orders yet.").classes("text-gray-500")
-                return
+            def selected_order() -> OrderRecord | None:
+                return next(
+                    (order for order in orders if order.order_id == state.selected_order_id),
+                    None,
+                )
 
-            with ui.card().classes("w-full"):
-                ui.label(f"{len(orders)} order(s)").classes("text-xl font-semibold")
-                with ui.row().classes("w-full font-semibold border-b pb-2 items-center text-sm"):
-                    ui.label("ID").classes("w-16")
-                    ui.label("Submitted").classes("w-44")
-                    ui.label("Name").classes("w-40")
-                    ui.label("Phone").classes("w-40")
-                    ui.label("Work Request").classes("grow")
-                    ui.label("Cost").classes("w-24")
-                    ui.label("Label").classes("w-24")
+            def selected_receipt_path() -> Path | None:
+                order = selected_order()
+                return (
+                    event.path / "labels" / order.label_filename
+                    if order is not None and order.label_filename
+                    else None
+                )
 
-                for order in orders:
-                    label_filename = order.label_filename or ""
-                    label_path = event.path / "labels" / label_filename
-                    with ui.row().classes("w-full border-b py-2 items-center text-sm gap-2"):
-                        with ui.row().classes("w-16 items-center gap-1"):
-                            ui.label(str(order.order_id))
-                            ui.button(
-                                icon="edit",
-                                on_click=lambda order_id=order.order_id: ui.navigate.to(
-                                    f"/events/{event.folder_name()}/orders/{order_id}/edit"
-                                ),
-                            ).props("flat round dense").classes("text-primary").tooltip(
-                                "Edit order"
+            def update_status() -> None:
+                order = selected_order()
+                detail = (
+                    f"Order #{order.order_id} selected · {len(orders)} order(s)"
+                    if order is not None
+                    else f"{len(orders)} order(s)"
+                )
+                status.update("Ready", detail)
+
+            @ui.refreshable
+            def order_list() -> None:
+                row_elements = {}
+
+                def configure_toolbar() -> None:
+                    order = selected_order()
+                    receipt_path = selected_receipt_path()
+                    edit_button.enabled = order is not None
+                    open_button.enabled = receipt_path is not None
+                    print_button.enabled = receipt_path is not None and not state.is_printing
+                    if receipt_path is not None:
+                        open_button.tooltip(str(receipt_path))
+                        print_button.tooltip(f"Print on {PRINTER_NAME}")
+
+                def select_order(order_id: int) -> None:
+                    update_list_row_selection(
+                        order_table,
+                        row_elements,
+                        previous=state.selected_order_id,
+                        selected=order_id,
+                    )
+                    state.selected_order_id = order_id
+                    configure_toolbar()
+                    update_status()
+
+                def move_selection(offset: int) -> None:
+                    order_ids = [order.order_id for order in sorted_orders()]
+                    order_id = adjacent_list_value(
+                        order_ids, state.selected_order_id, offset
+                    )
+                    if order_id is None:
+                        return
+                    select_order(order_id)
+                    row_elements[order_id].run_method("scrollIntoView", {"block": "nearest"})
+
+                def edit_selected_order() -> None:
+                    order = selected_order()
+                    if order is not None:
+                        edit_order(order.order_id)
+
+                def open_selected_receipt() -> None:
+                    receipt_path = selected_receipt_path()
+                    if receipt_path is not None:
+                        open_local_path(receipt_path)
+
+                async def print_selected_receipt() -> None:
+                    receipt_path = selected_receipt_path()
+                    if receipt_path is None or state.is_printing:
+                        return
+                    state.is_printing = True
+                    configure_toolbar()
+                    try:
+                        await print_label_image(receipt_path)
+                    finally:
+                        state.is_printing = False
+                        configure_toolbar()
+
+                with ui.row().classes("classic-list-toolbar w-full items-center gap-1"):
+                    edit_button = ui.button("Edit...", on_click=edit_selected_order).props(
+                        "flat dense"
+                    )
+                    open_button = ui.button("Open Receipt", on_click=open_selected_receipt).props(
+                        "flat dense"
+                    )
+                    print_button = ui.button("Print", on_click=print_selected_receipt).props(
+                        'flat dense data-testid="print-selected-receipt"'
+                    )
+                    ui.element("div").classes("classic-toolbar-separator")
+                    ui.button("Export...", on_click=handle_export).props("flat dense")
+                    configure_toolbar()
+
+                def change_sort(key: OrderSortKey) -> None:
+                    if state.sort_key == key:
+                        state.sort_descending = not state.sort_descending
+                    else:
+                        state.sort_key = key
+                        state.sort_descending = False
+                    order_list.refresh()
+
+                with (
+                    ui.element("div").classes("classic-list-panel page-scroll-list"),
+                    ui.element("table")
+                    .classes("classic-list order-list")
+                    .props('aria-label="Orders"') as order_table,
+                ):
+                    enable_list_keyboard(
+                        order_table,
+                        on_move=move_selection,
+                        on_activate=edit_selected_order,
+                    )
+                    with ui.element("thead"), ui.element("tr"):
+                        for heading, key, width in (
+                            ("ID", "order_id", "70px"),
+                            ("Submitted", "timestamp", "180px"),
+                            ("Name", "name", "180px"),
+                            ("Phone", "phone", "170px"),
+                            ("Work Request", "work_request", "auto"),
+                            ("Cost", "cost", "110px"),
+                        ):
+                            with ui.element("th").style(f"width: {width}"):
+                                sortable_header(
+                                    heading,
+                                    active=state.sort_key == key,
+                                    descending=state.sort_descending,
+                                    on_click=lambda sort_key=key: change_sort(sort_key),
+                                )
+                    with ui.element("tbody"):
+                        if not orders:
+                            with (
+                                ui.element("tr"),
+                                ui.element("td").props("colspan=6"),
+                            ):
+                                ui.label("No orders yet.").classes("text-gray-500")
+
+                        for order in sorted_orders():
+                            selected = order.order_id == state.selected_order_id
+                            row = (
+                                ui.element("tr")
+                                .classes(
+                                    "classic-list-row" + (" is-selected" if selected else "")
+                                )
+                                .props(f'data-testid="order-row-{order.order_id}"')
                             )
-                        ui.label(display_timestamp(order.timestamp)).classes("w-44")
-                        ui.label(order.name).classes("w-40")
-                        ui.label(order.phone).classes("w-40")
-                        ui.label(order.work_request).classes("grow")
-                        ui.label(order.cost).classes("w-24")
-                        with ui.row().classes("w-24 gap-0"):
-                            if label_filename:
-                                ui.button(
-                                    icon="article",
-                                    on_click=lambda path=label_path: open_local_path(path),
-                                ).props("flat round dense").classes("text-primary").tooltip(
-                                    str(label_path)
-                                )
-                                ui.button(
-                                    icon="print",
-                                    on_click=lambda path=label_path: print_label_image(path),
-                                ).props("flat round dense").classes("text-primary").tooltip(
-                                    f"Print on {PRINTER_NAME}"
-                                )
-                            else:
-                                ui.label("—").classes("text-gray-400")
+                            row_elements[order.order_id] = row
+                            row.on(
+                                "click",
+                                lambda order_id=order.order_id: select_order(order_id),
+                            ).on(
+                                "dblclick",
+                                lambda order_id=order.order_id: edit_order(order_id),
+                            )
+                            with row:
+                                with ui.element("td"):
+                                    ui.label(str(order.order_id))
+                                with ui.element("td"):
+                                    ui.label(display_timestamp(order.timestamp))
+                                with ui.element("td"):
+                                    ui.label(order.name)
+                                with ui.element("td"):
+                                    ui.label(order.phone)
+                                with ui.element("td"):
+                                    ui.label(order.work_request)
+                                with ui.element("td"):
+                                    ui.label(order.cost)
+
+            with ui.column().classes("event-page-content w-full gap-4"):
+                order_list()
+            update_status()
+            application_status(status)

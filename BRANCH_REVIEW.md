@@ -71,10 +71,41 @@ Review validation completed without launching the application:
 - `git diff --check` passed.
 
 The follow-up review found no remaining merge-blocking issues. Live or interactive application
-validation was intentionally not performed.
+validation was intentionally not performed **at that stage**.
+
+## Subsequent UI iterations
+
+Since that review, the native application and disposable browser harness have been exercised.
+The later iterations include:
+
+- `scripts/live_ui_harness.py` checks startup readiness/performance and duplicate Intake and
+  printing actions. Native startup now waits for the NiceGUI handshake before showing the window;
+  the Windows packaged build also checks interactive readiness.
+- Application status is page-scoped typed bindable state; the status bar uses a fixed NiceGUI
+  footer. Dialog focus uses the dialog's show event. Production interactions use NiceGUI handlers
+  rather than custom JavaScript, and the theme CSS loads once application-wide.
+- Classic list selection/keyboard navigation is shared without replacing the page-specific table
+  workflows. Catalog, Events, Orders and Management use page scrolling rather than nested table
+  scrolling; an Events bindable-toolbar pilot was reverted because it did not improve clarity.
+- Event tabs now join raised content panels, including Management's Catalog Price Overrides.
+  The Intake catalog picker uses a fixed-height two-column list with compact item descriptions
+  and effective event prices, while preserving selection and keyboard behavior.
+- `pages/catalog_ui.py` shares catalog text matching, compact item cells and effective event-price
+  calculation. Filtering, sorting, selection and persistence remain local to each view.
+- Management's price filter uses accessible, tooltip-labeled icon buttons styled like a classic
+  formatting toolbar. The chosen option is sunken; the page reserves a stable scrollbar gutter
+  so filtering does not change the layout width.
+
+Recent validation: `uv run ruff check .`, `uv run ty check`, `uv run pytest -q`
+(34 passed, 1 skipped), `git diff --check`, and the live UI harness pass. Native appearance
+and interactions were reviewed manually during the fit-and-finish iterations.
 
 ## Deferred work
 
+- Consider field-attached, lazy validation for Catalog base price and Event Management price
+  overrides. Both already reject invalid, negative or over-precise prices, but currently show
+  transient notifications; retain the existing parser and storage checks. No new validation
+  rules or broad form rewrite are needed.
 - Intake initial focus and tab-order review.
 - Optional Ctrl+Enter submission shortcut.
 - General dirty-form navigation warnings.

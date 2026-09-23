@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from nicegui import events, ui
+from nicegui.elements.button import Button
 from nicegui.elements.input import Input
 
 from expedite.models import Event
@@ -94,24 +95,42 @@ def register_event_details_page() -> None:
 
             with panel, group_box("Catalog Price Overrides"):
                 ui.label(
-                    "Prices save automatically when you press Enter or leave the field. "
-                    "Leave an event price blank to use the catalog base price."
+                    "Prices save when pressing Enter or leaving the field. "
+                    "Leave price blank to use base price."
                 ).classes("text-sm text-gray-500")
-                with ui.row().classes("w-full items-center gap-3 flex-wrap"):
+                with ui.row().classes("w-full items-end gap-3 flex-wrap"):
                     with labeled_field("Filter by name or description", classes="grow min-w-64"):
                         filter_input = ui.input().props("outlined clearable").classes("w-full")
-                    pricing_filter = (
-                        ui.toggle(
-                            {
-                                "all": "All",
-                                "overridden": "Overridden",
-                                "base": "Using Base",
-                            },
-                            value="all",
-                        )
-                        .props("no-caps")
-                        .classes("pricing-filter")
-                    )
+                    with ui.row().classes("pricing-filter-controls items-center gap-1"):
+                        ui.element("div").classes("classic-toolbar-separator")
+                        with ui.row().classes("pricing-filter items-center gap-0").props(
+                            'role=group aria-label="Price filter"'
+                        ):
+                            pricing_buttons: dict[PricingFilter, Button] = {}
+
+                            def choose_filter(selected: PricingFilter) -> None:
+                                state.pricing = selected
+                                for key, button in pricing_buttons.items():
+                                    button.props["aria-pressed"] = str(key == selected).lower()
+                                price_list.refresh()
+
+                            choices: tuple[tuple[PricingFilter, str, str], ...] = (
+                                ("all", "view_list", "Show all catalog items"),
+                                (
+                                    "overridden",
+                                    "edit",
+                                    "Show items with an event price override",
+                                ),
+                                ("base", "sell", "Show items using the catalog base price"),
+                            )
+                            for choice, icon, description in choices:
+                                button = ui.button(
+                                    icon=icon, on_click=lambda key=choice: choose_filter(key)
+                                ).props("flat dense")
+                                button.props["aria-label"] = description
+                                button.props["aria-pressed"] = str(choice == state.pricing).lower()
+                                button.tooltip(description)
+                                pricing_buttons[choice] = button
 
                 @ui.refreshable
                 def price_list() -> None:
@@ -249,16 +268,7 @@ def register_event_details_page() -> None:
                     state.query = change.value or ""
                     price_list.refresh()
 
-                def handle_pricing_filter_change(
-                    change: events.ValueChangeEventArguments[str | None],
-                ) -> None:
-                    state.pricing = (
-                        change.value if change.value in {"all", "overridden", "base"} else "all"
-                    )
-                    price_list.refresh()
-
                 filter_input.on_value_change(handle_filter_change)
-                pricing_filter.on_value_change(handle_pricing_filter_change)
                 price_list()
 
             application_status(status)

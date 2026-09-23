@@ -270,8 +270,15 @@ button.q-btn.order-submit-button .q-icon {
 }
 
 .classic-quick-add-button .q-btn__content {
+  width: 100%;
   min-width: 0;
   justify-content: flex-start;
+}
+
+.classic-quick-add-button .button-label {
+  display: block;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

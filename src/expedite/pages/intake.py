@@ -1,9 +1,9 @@
 """Order intake form page."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from textwrap import shorten
 
 from nicegui import events, run, ui
 from nicegui.elements.button import Button
@@ -14,9 +14,9 @@ from expedite.local_files import open_local_path
 from expedite.models import Order, OrderLine
 from expedite.money import display_price, parse_price_cents
 from expedite.pages.application_shell import (
+    ApplicationStatus,
     application_menu,
     application_status,
-    update_application_status,
 )
 from expedite.pages.classic_ui import classic_dialog, group_box, labeled_field
 from expedite.pages.navigation import event_navigation_tabs, event_page_header
@@ -34,18 +34,6 @@ from expedite.storage.sqlite_store import (
 from expedite.theme import apply_windows_98_theme
 from expedite.validation import validate_name, validate_phone
 
-_QUICK_ADD_LABELS = {
-    "Buttons and Sticks": "Buttons + Sticks",
-    "Phob Conversion": "Phob",
-    "Snapback Module": "Snapback",
-    "Tactile Z (3rd party)": "Tactile Z (3P)",
-}
-
-
-def quick_add_label(name: str) -> str:
-    """Return a compact display label without changing the catalog item name."""
-    return _QUICK_ADD_LABELS.get(name, shorten(name, width=20, placeholder="…"))
-
 
 @dataclass
 class LineDraft:
@@ -57,13 +45,17 @@ class LineDraft:
     show_notes: bool = False
 
 
-def register_intake_page() -> None:
+def register_intake_page(
+    *,
+    print_label_fn: Callable[[Path], str] = print_label,
+) -> None:
     def show_event_not_found() -> None:
+        status = ApplicationStatus("Event not found")
         with ui.column().classes("app-page w-full p-6 gap-4"):
-            application_menu()
+            application_menu(status)
             ui.label("Event not found").classes("text-2xl font-bold text-negative")
             ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
-            application_status("Event not found")
+            application_status(status)
 
     def render_intake_page(folder_name: str, edit_order_id: int | None = None) -> None:
         apply_windows_98_theme()
@@ -74,8 +66,9 @@ def register_intake_page() -> None:
 
         existing_order = get_order(event, edit_order_id) if edit_order_id else None
         if edit_order_id is not None and existing_order is None:
+            status = ApplicationStatus("Order not found")
             with ui.column().classes("app-page w-full p-6 gap-4"):
-                application_menu()
+                application_menu(status)
                 ui.label(f"Order #{edit_order_id} not found").classes(
                     "text-2xl font-bold text-negative"
                 )
@@ -83,7 +76,7 @@ def register_intake_page() -> None:
                     "Back to Orders",
                     on_click=lambda: ui.navigate.to(f"/events/{folder_name}/orders"),
                 )
-                application_status("Order not found")
+                application_status(status)
             return
 
         catalog = list_catalog_items()
@@ -128,14 +121,18 @@ def register_intake_page() -> None:
             line_drafts = [LineDraft()]
 
         ui.page_title(f"{event.name} - Intake")
+        status_detail = (
+            f"Editing order #{existing_order.order_id}" if existing_order else "New order"
+        )
+        status = ApplicationStatus(detail=status_detail)
 
         async def print_label_image(path: Path) -> None:
             try:
-                printer_name = await run.io_bound(print_label, path)
+                printer_name = await run.io_bound(print_label_fn, path)
             except PrintError as error:
                 ui.notify(str(error), type="negative", multi_line=True)
             else:
-                update_application_status("Label sent to printer", printer_name)
+                status.update("Label sent to printer", printer_name)
 
         async def print_receipt(path: Path, button: Button) -> None:
             button.disable()
@@ -145,7 +142,7 @@ def register_intake_page() -> None:
                 button.enable()
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
-            application_menu()
+            application_menu(status)
             event_page_header(event)
             event_navigation_tabs(event.folder_name(), "intake")
 
@@ -242,16 +239,17 @@ def register_intake_page() -> None:
                             ) -> None:
                                 add_favorite_item(selected_id)
 
-                            button_text = quick_add_label(favorite_item.name)
                             alt_text = (
                                 f"{favorite_item.name} · {description} · "
                                 f"Cost: {display_price(favorite_price)}"
                             )
                             favorite_button = (
-                                ui.button(button_text, on_click=add_selected_favorite)
+                                ui.button(on_click=add_selected_favorite)
                                 .props("flat no-caps align=left")
                                 .classes("classic-quick-add-button w-full")
                             )
+                            with favorite_button:
+                                ui.label(favorite_item.name).classes("button-label")
                             favorite_button.props["aria-label"] = alt_text
                             favorite_button.tooltip(alt_text)
 
@@ -587,11 +585,10 @@ def register_intake_page() -> None:
                             print_button.props["aria-label"] = (
                                 f"Print receipt for order {saved_order.order_id}"
                             )
+                            print_button.props["data-testid"] = "print-created-receipt"
                             print_button.tooltip(f"Print on {PRINTER_NAME}")
                         verb = "Updated" if existing_order else "Saved"
-                        update_application_status(
-                            f"{verb} order #{saved_order.order_id}", label_path.name
-                        )
+                        status.update(f"{verb} order #{saved_order.order_id}", label_path.name)
                         await print_label_image(label_path)
                         if not existing_order:
                             clear_form()
@@ -610,12 +607,10 @@ def register_intake_page() -> None:
                         .classes("order-submit-button")
                     )
                     submit_button.props["aria-label"] = submit_text
+                    submit_button.props["data-testid"] = "submit-order"
                     submit_button.tooltip(f"{submit_text}: save order and create receipt")
 
-            status_detail = (
-                f"Editing order #{existing_order.order_id}" if existing_order else "New order"
-            )
-            application_status("Ready", status_detail)
+            application_status(status)
 
     @ui.page("/events/{folder_name}")
     def intake_page(folder_name: str) -> None:

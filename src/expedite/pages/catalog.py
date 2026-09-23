@@ -10,9 +10,9 @@ from expedite.config import APP_NAME
 from expedite.models import CatalogItem
 from expedite.money import display_price, parse_price_cents
 from expedite.pages.application_shell import (
+    ApplicationStatus,
     application_menu,
     application_status,
-    update_application_status,
 )
 from expedite.pages.classic_ui import (
     classic_dialog,
@@ -51,6 +51,7 @@ def register_catalog_page() -> None:
         ui.page_title(f"{APP_NAME} - Catalog")
 
         state = CatalogPageState()
+        status = ApplicationStatus()
 
         def visible_items() -> list[CatalogItem]:
             query = state.filter.strip().casefold()
@@ -69,8 +70,7 @@ def register_catalog_page() -> None:
                 None,
             )
 
-        @ui.refreshable
-        def catalog_status() -> None:
+        def update_status() -> None:
             item = selected_item()
             favorite_count = len(list_catalog_favorite_ids())
             detail = (
@@ -79,11 +79,11 @@ def register_catalog_page() -> None:
                 else f"{len(visible_items())} item(s) · "
                 f"{favorite_count}/{MAX_CATALOG_FAVORITES} favorites"
             )
-            application_status("Ready", detail)
+            status.update("Ready", detail)
 
         def refresh_catalog() -> None:
             item_list.refresh()
-            catalog_status.refresh()
+            update_status()
 
         def focus(element: Element) -> None:
             ui.timer(0.05, lambda: element.run_method("focus"), once=True)
@@ -132,7 +132,7 @@ def register_catalog_page() -> None:
             state.selected_id = saved.id
             state.dialog_item_id = saved.id
             refresh_catalog()
-            update_application_status("Catalog item saved", saved.name)
+            status.update("Catalog item saved", saved.name)
             item_dialog.close()
 
         with classic_dialog(
@@ -187,7 +187,7 @@ def register_catalog_page() -> None:
             item_dialog.open()
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
-            application_menu()
+            application_menu(status)
             with ui.row().classes("app-page-header w-full items-center justify-between"):
                 ui.label("Catalog").classes("app-page-title text-3xl font-bold")
 
@@ -234,7 +234,7 @@ def register_catalog_page() -> None:
                         if item_id in row_elements:
                             row_elements[item_id].classes(add="is-selected")
                         configure_toolbar()
-                        catalog_status.refresh()
+                        update_status()
 
                     def start_edit(item_id: int | None = None) -> None:
                         selected_id = item_id if item_id is not None else state.selected_id
@@ -259,7 +259,7 @@ def register_catalog_page() -> None:
                         else:
                             action = "Added to" if favorite else "Removed from"
                             refresh_catalog()
-                            update_application_status(f"{action} intake favorites", item.name)
+                            status.update(f"{action} intake favorites", item.name)
 
                     def toggle_active() -> None:
                         item = current_item()
@@ -274,7 +274,7 @@ def register_catalog_page() -> None:
                         )
                         action = "Activated" if saved.active else "Deactivated"
                         refresh_catalog()
-                        update_application_status(action, saved.name)
+                        status.update(action, saved.name)
 
                     with ui.row().classes("classic-list-toolbar w-full items-center gap-1"):
                         ui.button("New...", on_click=lambda: open_item_dialog(None)).props(
@@ -396,9 +396,10 @@ def register_catalog_page() -> None:
                     if state.selected_id not in visible_ids:
                         state.selected_id = None
                     item_list.refresh()
-                    catalog_status.refresh()
+                    update_status()
 
                 filter_input.on_value_change(handle_filter_change)
                 item_list()
 
-            catalog_status()
+            update_status()
+            application_status(status)

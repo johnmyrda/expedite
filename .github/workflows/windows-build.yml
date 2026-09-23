@@ -226,6 +226,7 @@ jobs:
           $windowMarker = Join-Path $diagnosticDirectory "native-window-shown"
           Remove-Item $windowMarker -ErrorAction SilentlyContinue
           $installedExecutable = Join-Path $env:EXPEDITE_TEST_INSTALL_DIR "Expedite.exe"
+          $startupTimer = [System.Diagnostics.Stopwatch]::StartNew()
           $process = Start-Process `
             -FilePath $installedExecutable `
             -ArgumentList @(
@@ -258,8 +259,8 @@ jobs:
               throw "Packaged application did not serve its home page within 60 seconds."
             }
 
-            # The HTTP server can be healthy even when pywebview fails. Require the
-            # event emitted only after the native Windows window is actually shown.
+            # The HTTP server can be healthy even when pywebview or the NiceGUI
+            # handshake fails. Require the marker written after the ready window is shown.
             $windowShown = $false
             for ($attempt = 0; $attempt -lt 30; $attempt++) {
               $process.Refresh()
@@ -273,9 +274,15 @@ jobs:
               Start-Sleep -Seconds 1
             }
             if (-not $windowShown) {
-              throw "Native window did not emit its shown event within 30 seconds."
+              throw "Native window did not become interactive within 30 seconds."
             }
-            Write-Host "Packaged HTTP server and native window are healthy."
+            $startupTimer.Stop()
+            $startupSeconds = $startupTimer.Elapsed.TotalSeconds
+            Write-Host "Native startup reached interactive state in $startupSeconds seconds."
+            if ($startupSeconds -gt 15) {
+              throw "Native startup exceeded the 15-second performance budget."
+            }
+            Write-Host "Packaged HTTP server and interactive native window are healthy."
           } finally {
             if (-not $process.HasExited) {
               & taskkill.exe /PID $process.Id /T /F 2>$null | Out-Null

@@ -4,6 +4,7 @@
 import argparse
 import os
 import tempfile
+import time
 from pathlib import Path
 
 
@@ -20,18 +21,31 @@ def main() -> None:
             )
         ),
     )
+    parser.add_argument(
+        "--fake-print-delay",
+        type=float,
+        help="Use a fake printer which completes after the given number of seconds.",
+    )
     args = parser.parse_args()
     os.environ["EVENT_INTAKE_DATA_DIR"] = str(args.data_dir.resolve())
 
     from nicegui import ui
 
+    from expedite.pages import intake, orders
     from expedite.pages.catalog import register_catalog_page
     from expedite.pages.event_details import register_event_details_page
     from expedite.pages.events import register_events_page
-    from expedite.pages.intake import register_intake_page
-    from expedite.pages.orders import register_orders_page
     from expedite.storage.events import ensure_data_dir
     from expedite.theme import register_theme_assets
+
+    fake_print = None
+    if args.fake_print_delay is not None:
+        if args.fake_print_delay < 0:
+            parser.error("--fake-print-delay must not be negative")
+
+        def fake_print(_path: Path) -> str:
+            time.sleep(args.fake_print_delay)
+            return "UI test printer"
 
     ensure_data_dir()
     register_theme_assets()
@@ -39,8 +53,8 @@ def main() -> None:
         register_catalog_page,
         register_event_details_page,
         register_events_page,
-        register_intake_page,
-        register_orders_page,
+        lambda: intake.register_intake_page(print_label_fn=fake_print or intake.print_label),
+        lambda: orders.register_orders_page(print_label_fn=fake_print or orders.print_label),
     ):
         register_page()
 

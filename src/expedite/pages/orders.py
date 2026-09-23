@@ -1,5 +1,6 @@
 """Order listing page for an event."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -11,9 +12,9 @@ from expedite.config import PRINTER_NAME
 from expedite.local_files import open_local_path
 from expedite.models import OrderRecord
 from expedite.pages.application_shell import (
+    ApplicationStatus,
     application_menu,
     application_status,
-    update_application_status,
 )
 from expedite.pages.classic_ui import enable_list_keyboard, sortable_header
 from expedite.pages.navigation import event_navigation_tabs, event_page_header
@@ -39,22 +40,27 @@ def display_timestamp(value: datetime) -> str:
     return value.astimezone().isoformat(timespec="minutes").replace("T", " ")
 
 
-def register_orders_page() -> None:
+def register_orders_page(
+    *,
+    print_label_fn: Callable[[Path], str] = print_label,
+) -> None:
     @ui.page("/events/{folder_name}/orders")
     def orders_page(folder_name: str) -> None:
         apply_windows_98_theme()
         event = get_event(folder_name)
         if event is None:
+            status = ApplicationStatus("Event not found")
             with ui.column().classes("app-page w-full p-6 gap-4"):
-                application_menu()
+                application_menu(status)
                 ui.label("Event not found").classes("text-2xl font-bold text-negative")
                 ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
-                application_status("Event not found")
+                application_status(status)
             return
 
         ui.page_title(f"{event.name} - Orders")
         orders = list_order_records(event)
         state = OrdersPageState()
+        status = ApplicationStatus()
 
         def sorted_orders() -> list[OrderRecord]:
             def cost_value(order: OrderRecord) -> float:
@@ -80,21 +86,21 @@ def register_orders_page() -> None:
 
         async def print_label_image(path: Path) -> None:
             try:
-                printer_name = await run.io_bound(print_label, path)
+                printer_name = await run.io_bound(print_label_fn, path)
             except PrintError as error:
                 ui.notify(str(error), type="negative", multi_line=True)
             else:
-                update_application_status("Label sent to printer", printer_name)
+                status.update("Label sent to printer", printer_name)
 
         def handle_export() -> None:
             path = export_orders_csv(event)
-            update_application_status("Orders exported", path.name)
+            status.update("Orders exported", path.name)
 
         def edit_order(order_id: int) -> None:
             ui.navigate.to(f"/events/{event.folder_name()}/orders/{order_id}/edit")
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
-            application_menu(on_export=handle_export)
+            application_menu(status, on_export=handle_export)
             event_page_header(event)
             event_navigation_tabs(event.folder_name(), "orders")
 
@@ -112,15 +118,14 @@ def register_orders_page() -> None:
                     else None
                 )
 
-            @ui.refreshable
-            def order_status() -> None:
+            def update_status() -> None:
                 order = selected_order()
                 detail = (
                     f"Order #{order.order_id} selected · {len(orders)} order(s)"
                     if order is not None
                     else f"{len(orders)} order(s)"
                 )
-                application_status("Ready", detail)
+                status.update("Ready", detail)
 
             @ui.refreshable
             def order_list() -> None:
@@ -143,7 +148,7 @@ def register_orders_page() -> None:
                     state.selected_order_id = order_id
                     row_elements[order_id].classes(add="is-selected")
                     configure_toolbar()
-                    order_status.refresh()
+                    update_status()
 
                 def edit_selected_order() -> None:
                     order = selected_order()
@@ -175,7 +180,7 @@ def register_orders_page() -> None:
                         "flat dense"
                     )
                     print_button = ui.button("Print", on_click=print_selected_receipt).props(
-                        "flat dense"
+                        'flat dense data-testid="print-selected-receipt"'
                     )
                     ui.element("div").classes("classic-toolbar-separator")
                     ui.button("Export...", on_click=handle_export).props("flat dense")
@@ -222,8 +227,12 @@ def register_orders_page() -> None:
 
                         for order in sorted_orders():
                             selected = order.order_id == state.selected_order_id
-                            row = ui.element("tr").classes(
-                                "classic-list-row" + (" is-selected" if selected else "")
+                            row = (
+                                ui.element("tr")
+                                .classes(
+                                    "classic-list-row" + (" is-selected" if selected else "")
+                                )
+                                .props(f'data-testid="order-row-{order.order_id}"')
                             )
                             row_elements[order.order_id] = row
                             row.on(
@@ -249,4 +258,5 @@ def register_orders_page() -> None:
 
             with ui.column().classes("event-page-content w-full gap-4"):
                 order_list()
-            order_status()
+            update_status()
+            application_status(status)

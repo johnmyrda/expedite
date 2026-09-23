@@ -9,7 +9,11 @@ from nicegui import ui
 from expedite.config import APP_NAME, data_dir
 from expedite.local_files import open_local_path
 from expedite.models import Event
-from expedite.pages.application_shell import application_menu, application_status
+from expedite.pages.application_shell import (
+    ApplicationStatus,
+    application_menu,
+    application_status,
+)
 from expedite.pages.classic_ui import (
     classic_dialog,
     enable_list_keyboard,
@@ -37,6 +41,7 @@ def register_events_page() -> None:
     def events_page() -> None:
         apply_windows_98_theme()
         ui.page_title(APP_NAME)
+        status = ApplicationStatus()
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
             app_data_dir = data_dir()
@@ -61,6 +66,7 @@ def register_events_page() -> None:
                 on_accept=create_new_event,
                 width="460px",
             ) as new_event_dialog:
+                new_event_dialog.element.props('data-testid="new-event-dialog"')
                 with group_box("Event Details"):
                     with labeled_field("Event name"):
                         event_name_input = (
@@ -75,7 +81,7 @@ def register_events_page() -> None:
                 event_date_input.value = datetime.now().astimezone().date().isoformat()
                 new_event_dialog.open()
 
-            application_menu()
+            application_menu(status)
             with ui.row().classes("app-page-header w-full items-center justify-between"):
                 with ui.row().classes("items-center gap-2"):
                     ui.label(APP_NAME).classes("app-page-title text-3xl font-bold")
@@ -85,7 +91,9 @@ def register_events_page() -> None:
                     ).props("flat round dense").classes("text-primary")
                     data_folder_button.props["aria-label"] = "Open data folder"
                     data_folder_button.tooltip(str(app_data_dir))
-                ui.button("New Event...", on_click=open_new_event).props("color=primary")
+                ui.button("New Event...", on_click=open_new_event).props(
+                    'color=primary data-testid="new-event"'
+                )
 
             events = list_events()
             state = EventsPageState()
@@ -114,15 +122,14 @@ def register_events_page() -> None:
                 if event is not None:
                     ui.navigate.to(f"/events/{event.folder_name()}{suffix}")
 
-            @ui.refreshable
-            def events_status() -> None:
+            def update_status() -> None:
                 event = selected_event()
                 detail = (
                     f"{event.name} selected · {len(events)} event(s)"
                     if event is not None
                     else f"{len(events)} event(s)"
                 )
-                application_status("Ready", detail)
+                status.update("Ready", detail)
 
             with group_box("Recent Events"):
                 row_elements = {}
@@ -140,7 +147,7 @@ def register_events_page() -> None:
                     state.selected_folder = folder_name
                     row_elements[folder_name].classes(add="is-selected")
                     configure_toolbar()
-                    events_status.refresh()
+                    update_status()
 
                 with ui.row().classes("classic-list-toolbar w-full items-center gap-1"):
                     intake_button = ui.button(
@@ -228,4 +235,5 @@ def register_events_page() -> None:
 
                     event_table_contents()
 
-            events_status()
+            update_status()
+            application_status(status)

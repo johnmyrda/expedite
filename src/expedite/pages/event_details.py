@@ -9,9 +9,9 @@ from nicegui.elements.input import Input
 from expedite.models import Event
 from expedite.money import display_price, parse_price_cents
 from expedite.pages.application_shell import (
+    ApplicationStatus,
     application_menu,
     application_status,
-    update_application_status,
 )
 from expedite.pages.classic_ui import group_box, labeled_field, sortable_header
 from expedite.pages.navigation import event_navigation_tabs, event_page_header
@@ -44,19 +44,21 @@ def register_event_details_page() -> None:
         apply_windows_98_theme()
         loaded_event = get_event(folder_name)
         if loaded_event is None:
+            status = ApplicationStatus("Event not found")
             with ui.column().classes("app-page w-full p-6 gap-4"):
-                application_menu()
+                application_menu(status)
                 ui.label("Event not found").classes("text-2xl font-bold text-negative")
                 ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
-                application_status("Event not found")
+                application_status(status)
             return
 
         event: Event = loaded_event
         ui.page_title(f"{event.name} - Manage")
         state = PriceListState()
+        status = ApplicationStatus(detail=event.name)
 
         with ui.column().classes("app-page w-full p-6 gap-6"):
-            application_menu()
+            application_menu(status)
             title = event_page_header(event)
             event_navigation_tabs(folder_name, "management")
 
@@ -83,7 +85,7 @@ def register_event_details_page() -> None:
                     save_event(event)
                     title.text = event.name
                     ui.page_title(f"{event.name} - Manage")
-                    update_application_status("Event details saved", event.name)
+                    status.update("Event details saved", event.name)
 
                 ui.button("Save Details", on_click=save_details).props("color=primary")
 
@@ -242,7 +244,7 @@ def register_event_details_page() -> None:
                                             else "Override cleared"
                                         )
                                         price_list.refresh()
-                                        update_application_status(message, item_name)
+                                        status.update(message, item_name)
 
                                     price_input.on("blur", save_override)
                                     price_input.on(
@@ -271,4 +273,4 @@ def register_event_details_page() -> None:
                 pricing_filter.on_value_change(handle_pricing_filter_change)
                 price_list()
 
-            application_status("Ready", event.name)
+            application_status(status)

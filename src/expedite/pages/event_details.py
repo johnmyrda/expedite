@@ -1,5 +1,6 @@
 """Event details and catalog price override management."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -45,6 +46,16 @@ class PriceListState:
     pricing: PricingFilter = "all"
     sort_key: PriceSortKey = "name"
     sort_descending: bool = False
+
+
+@dataclass
+class PriceEdit:
+    """One visible event-price input and the last value persisted for it."""
+
+    item_id: int
+    item_name: str
+    field: Input
+    saved_cents: int | None
 
 
 def register_event_details_page() -> None:
@@ -94,6 +105,12 @@ def register_event_details_page() -> None:
                 ui.button("Save Details", on_click=save_details).props("color=primary")
 
             with panel, group_box("Catalog Price Overrides"):
+                pending_price_saves: list[Callable[[], bool]] = []
+
+                def flush_pending_prices() -> bool:
+                    """Commit visible edits before a filter or sort removes their inputs."""
+                    return all(save() for save in pending_price_saves)
+
                 ui.label(
                     "Prices save when pressing Enter or leaving the field. "
                     "Leave price blank to use base price."
@@ -109,6 +126,8 @@ def register_event_details_page() -> None:
                             pricing_buttons: dict[PricingFilter, Button] = {}
 
                             def choose_filter(selected: PricingFilter) -> None:
+                                if not flush_pending_prices():
+                                    return
                                 state.pricing = selected
                                 for key, button in pricing_buttons.items():
                                     button.props["aria-pressed"] = str(key == selected).lower()
@@ -134,6 +153,7 @@ def register_event_details_page() -> None:
 
                 @ui.refreshable
                 def price_list() -> None:
+                    pending_price_saves.clear()
                     overrides = event_catalog_prices(event)
                     items = []
                     for item in list_catalog_items():
@@ -159,6 +179,8 @@ def register_event_details_page() -> None:
                     )
 
                     def change_sort(column_key: PriceSortKey) -> None:
+                        if not flush_pending_prices():
+                            return
                         if state.sort_key == column_key:
                             state.sort_descending = not state.sort_descending
                         else:
@@ -227,44 +249,60 @@ def register_event_details_page() -> None:
                                         price_input.props["aria-label"] = (
                                             f"Event price for {item.name}"
                                         )
-                                    last_saved_price = {"value": override}
+                                    if item.id is not None:
+                                        edit = PriceEdit(item.id, item.name, price_input, override)
 
-                                    def save_override(
-                                        catalog_item_id: int | None = item.id,
-                                        price_field: Input = price_input,
-                                        item_name: str = item.name,
-                                        saved_price: dict[str, int | None] = last_saved_price,
-                                    ) -> None:
-                                        if catalog_item_id is None:
-                                            return
-                                        raw_value = (price_field.value or "").strip()
-                                        try:
-                                            price_cents = (
-                                                parse_price_cents(raw_value) if raw_value else None
+                                        def save_override(
+                                            price_edit: PriceEdit = edit,
+                                            *,
+                                            refresh: bool = True,
+                                        ) -> bool:
+                                            raw_value = (price_edit.field.value or "").strip()
+                                            try:
+                                                price_cents = (
+                                                    parse_price_cents(raw_value)
+                                                    if raw_value else None
+                                                )
+                                            except ValueError as error:
+                                                ui.notify(str(error), type="negative")
+                                                price_edit.field.run_method("focus")
+                                                return False
+                                            if price_cents == price_edit.saved_cents:
+                                                return True
+                                            save_event_catalog_price(
+                                                event, price_edit.item_id, price_cents
                                             )
-                                        except ValueError as error:
-                                            ui.notify(str(error), type="negative")
-                                            return
-                                        if price_cents == saved_price["value"]:
-                                            return
-                                        save_event_catalog_price(
-                                            event, catalog_item_id, price_cents
-                                        )
-                                        saved_price["value"] = price_cents
-                                        message = (
-                                            "Override saved"
-                                            if price_cents is not None
-                                            else "Override cleared"
-                                        )
-                                        price_list.refresh()
-                                        status.update(message, item_name)
+                                            price_edit.saved_cents = price_cents
+                                            if refresh:
+                                                price_list.refresh()
+                                            message = (
+                                                "Override saved"
+                                                if price_cents is not None
+                                                else "Override cleared"
+                                            )
+                                            status.update(message, price_edit.item_name)
+                                            return True
 
-                                    price_input.on("blur", save_override)
-                                    price_input.on("keydown.enter.prevent", save_override)
+                                        price_input.on(
+                                            "blur",
+                                            lambda price_edit=edit: save_override(price_edit),
+                                        )
+                                        price_input.on(
+                                            "keydown.enter.prevent",
+                                            lambda price_edit=edit: save_override(price_edit),
+                                        )
+                                        pending_price_saves.append(
+                                            lambda price_edit=edit: save_override(
+                                                price_edit, refresh=False
+                                            )
+                                        )
 
                 def handle_filter_change(
                     change: events.ValueChangeEventArguments[str | None],
                 ) -> None:
+                    if not flush_pending_prices():
+                        filter_input.value = state.query
+                        return
                     state.query = change.value or ""
                     price_list.refresh()
 

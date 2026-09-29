@@ -78,7 +78,7 @@ class CdpPage:
             json.dumps({"id": command_id, "method": method, "params": params or {}})
         )
         while True:
-            message = json.loads(self._connection.recv())
+            message = json.loads(self._connection.recv(timeout=10))
             if "method" in message:
                 self._record_event(message)
                 continue
@@ -121,6 +121,7 @@ class CdpPage:
         self.command("Page.enable")
         self.command("Page.navigate", {"url": url})
         self.wait_for("document.readyState === 'complete'", description=f"load {url}")
+        self.wait_for("window.did_handshake === true", description=f"handshake {url}")
 
     def wait_for(
         self,
@@ -153,6 +154,60 @@ class CdpPage:
         )
         if not clicked:
             raise LiveUiError(f"Could not click missing element {selector}")
+
+    def click_real(self, selector: str) -> None:
+        """Use a physical mouse click, including focus and blur (unlike element.click())."""
+        selector_json = json.dumps(selector)
+        position = self.wait_for(
+            "(() => {"
+            f" const element = document.querySelector({selector_json});"
+            " if (!element) return null;"
+            " const box = element.getBoundingClientRect();"
+            " if (!box.width || !box.height) return null;"
+            " return {x: box.x + box.width / 2, y: box.y + box.height / 2};"
+            "})()",
+            description=f"visible {selector}",
+        )
+        assert isinstance(position, dict)
+        for event_type in ("mousePressed", "mouseReleased"):
+            self.command("Input.dispatchMouseEvent", {
+                "type": event_type,
+                "x": position["x"],
+                "y": position["y"],
+                "button": "left",
+                "clickCount": 1,
+            })
+
+    def fill(self, selector: str, text: str) -> None:
+        """Type into an input through CDP so NiceGUI receives real input events."""
+        selector_json = json.dumps(selector)
+        focused = self.evaluate(
+            "(() => {"
+            f" const element = document.querySelector({selector_json});"
+            " if (!(element instanceof HTMLInputElement)) return false;"
+            " element.focus(); element.select(); return true;"
+            "})()"
+        )
+        if not focused:
+            raise LiveUiError(f"Could not fill missing input {selector}")
+        self.command("Input.insertText", {"text": text})
+        self.wait_for(
+            f"document.querySelector({selector_json})?.value === {json.dumps(text)}",
+            description=f"value of {selector}",
+        )
+
+    def press(self, key: str) -> None:
+        """Press a navigation key on the currently focused element."""
+        codes = {"ArrowDown": 40, "ArrowUp": 38, "Enter": 13, "Tab": 9}
+        if key not in codes:
+            raise ValueError(f"Unsupported key: {key}")
+        for event_type in ("keyDown", "keyUp"):
+            self.command("Input.dispatchKeyEvent", {
+                "type": event_type,
+                "key": key,
+                "code": key,
+                "windowsVirtualKeyCode": codes[key],
+            })
 
     def wait_for_selector(self, selector: str, *, timeout: float = 10) -> None:
         selector_json = json.dumps(selector)
@@ -223,9 +278,17 @@ class LiveUiHarness:
         self.server_ready_seconds = 0.0
         self.chrome_ready_seconds = 0.0
         self._failed = False
+        self._previous_data_dir: str | None = None
+        self._environment_set = False
 
     def __enter__(self) -> LiveUiHarness:
         try:
+            self._previous_data_dir = os.environ.get("EVENT_INTAKE_DATA_DIR")
+            os.environ["EVENT_INTAKE_DATA_DIR"] = str(self.data_dir)
+            self._environment_set = True
+            from expedite.storage.database import dispose_engine
+
+            dispose_engine()
             self._start_server()
             self._start_chrome()
             self.page = CdpPage(self._page_websocket_url())
@@ -252,6 +315,15 @@ class LiveUiHarness:
         _terminate_process_tree(self.server)
         self.chrome = None
         self.server = None
+        if self._environment_set:
+            from expedite.storage.database import dispose_engine
+
+            dispose_engine()
+            if self._previous_data_dir is None:
+                os.environ.pop("EVENT_INTAKE_DATA_DIR", None)
+            else:
+                os.environ["EVENT_INTAKE_DATA_DIR"] = self._previous_data_dir
+            self._environment_set = False
         if self._failed or self.keep_artifacts:
             print(f"Live UI artifacts: {self.artifact_dir}")
         else:
@@ -498,12 +570,9 @@ def measure_startup(
 
 def run_print_lock_checks(harness: LiveUiHarness) -> None:
     """Exercise submit and receipt-print locking in a real browser."""
-    os.environ["EVENT_INTAKE_DATA_DIR"] = str(harness.data_dir)
-    from expedite.storage.database import dispose_engine
     from expedite.storage.events import create_event
     from expedite.storage.sqlite_store import list_order_records
 
-    dispose_engine()
     event = create_event("Live UI Print Lock", "2026-01-02")
     page = harness.page
     assert page is not None
@@ -549,7 +618,95 @@ def run_print_lock_checks(harness: LiveUiHarness) -> None:
     page.wait_for_disabled(selected_print_selector, False, timeout=15)
     print("PASS: Orders Print remains disabled across row selection while printing")
 
-    dispose_engine()
+    # Sorting replaces the toolbar while the original print handler is still awaiting.
+    page.click(row_selector)
+    page.wait_for(
+        "document.querySelector('.app-status-message')?.textContent === 'Ready'",
+        description="Orders status reset",
+    )
+    page.click(selected_print_selector)
+    page.wait_for_disabled(selected_print_selector, True)
+    page.click(".order-list th:nth-child(2) button")
+    page.wait_for_selector(row_selector)
+    _assert(page.is_disabled(selected_print_selector), "Sorting re-enabled Print mid-print")
+    page.wait_for(
+        "document.querySelector('.app-status-message')?.textContent"
+        " === 'Label sent to printer'",
+        description="print completion after sorting",
+        timeout=15,
+    )
+    page.wait_for_disabled(selected_print_selector, False, timeout=5)
+    print("PASS: Orders Print is restored after sorting during printing")
+
+
+def run_price_override_race_checks(harness: LiveUiHarness) -> None:
+    """Ensure editing a price immediately before a list refresh does not lose it."""
+    from expedite.storage.events import create_event
+    from expedite.storage.sqlite_store import (
+        event_catalog_prices,
+        save_catalog_item,
+    )
+
+    event = create_event("Live UI Price Save", "2026-01-02")
+    item = save_catalog_item(
+        item_id=None,
+        name="Live UI Price Item",
+        description=None,
+        base_price_cents=100,
+        active=True,
+    )
+    assert item.id is not None
+    save_catalog_item(
+        item_id=None,
+        name="Live UI Base Item",
+        description=None,
+        base_price_cents=200,
+        active=True,
+    )
+    page = harness.page
+    assert page is not None
+    page.navigate(f"{harness.base_url}/events/{quote(event.folder_name())}/manage")
+    price_selector = 'input[aria-label="Event price for Live UI Price Item"]'
+    page.wait_for_selector(price_selector)
+
+    def wait_for_price(expected: int) -> None:
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if event_catalog_prices(event).get(item.id) == expected:
+                return
+            time.sleep(0.05)
+        raise LiveUiError(f"Event price was not saved as {expected} cents")
+
+    page.fill(price_selector, "5.00")
+    page.click_real(".pricing-filter button:nth-child(2)")
+    wait_for_price(500)
+    page.wait_for(
+        "document.querySelectorAll('.management-price-list tbody tr').length === 1"
+        " && document.querySelector('.management-price-list tbody')?.innerText"
+        ".includes('Live UI Price Item')",
+        description="saved item in overridden list",
+    )
+    print("PASS: blurring a price into the override filter saves it")
+
+    page.click(".pricing-filter button:nth-child(1)")
+    page.wait_for(
+        "document.querySelector('.pricing-filter button:nth-child(1)')"
+        "?.getAttribute('aria-pressed') === 'true'",
+        description="All price filter selected",
+    )
+    page.wait_for(
+        "document.querySelectorAll('.management-price-list tbody tr').length === 2",
+        description="all catalog prices rendered",
+    )
+    page.fill(price_selector, "6.00")
+    page.click_real(".management-price-list th:nth-child(2) button")
+    wait_for_price(600)
+    page.wait_for(
+        "document.querySelector('.management-price-list th:nth-child(2) button')"
+        "?.innerText.includes('▲')",
+        description="Base Price sort applied after saving",
+    )
+    print("PASS: blurring a price while sorting saves it")
 
 
 def main() -> None:
@@ -590,6 +747,7 @@ def main() -> None:
             measure_startup(harness, budgets)
             if not args.startup_only:
                 run_print_lock_checks(harness)
+                run_price_override_race_checks(harness)
     except Exception as error:
         print(f"FAIL: {error}", file=sys.stderr)
         raise SystemExit(1) from error

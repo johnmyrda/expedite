@@ -129,17 +129,20 @@ def register_orders_page(
                 )
                 status.update("Ready", detail)
 
+            current_toolbar: Callable[[bool], None] | None = None
+
             @ui.refreshable
             def order_list() -> None:
+                nonlocal current_toolbar
                 row_elements = {}
 
-                def configure_toolbar() -> None:
+                def configure_toolbar(update_tooltips: bool = True) -> None:
                     order = selected_order()
                     receipt_path = selected_receipt_path()
                     edit_button.enabled = order is not None
                     open_button.enabled = receipt_path is not None
                     print_button.enabled = receipt_path is not None and not state.is_printing
-                    if receipt_path is not None:
+                    if receipt_path is not None and update_tooltips:
                         open_button.tooltip(str(receipt_path))
                         print_button.tooltip(f"Print on {PRINTER_NAME}")
 
@@ -179,12 +182,15 @@ def register_orders_page(
                     if receipt_path is None or state.is_printing:
                         return
                     state.is_printing = True
-                    configure_toolbar()
+                    if current_toolbar is not None:
+                        current_toolbar(True)
                     try:
                         await print_label_image(receipt_path)
                     finally:
                         state.is_printing = False
-                        configure_toolbar()
+                        if current_toolbar is not None:
+                            # The original event slot may have been replaced by sorting.
+                            current_toolbar(False)
 
                 with ui.row().classes("classic-list-toolbar w-full items-center gap-1"):
                     edit_button = ui.button("Edit...", on_click=edit_selected_order).props(
@@ -198,6 +204,7 @@ def register_orders_page(
                     )
                     ui.element("div").classes("classic-toolbar-separator")
                     ui.button("Export...", on_click=handle_export).props("flat dense")
+                    current_toolbar = configure_toolbar
                     configure_toolbar()
 
                 def change_sort(key: OrderSortKey) -> None:

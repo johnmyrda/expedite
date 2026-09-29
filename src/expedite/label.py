@@ -174,8 +174,7 @@ def render_label(order: Order) -> Path:
     output_path = labels_dir / label_filename(order)
 
     # Start with generous height, then crop to the actual receipt length. The
-    # RP332 is a receipt printer, so labels should be variable-height instead
-    # of fixed 4x6 shipping-label pages.
+    # RP332 is a receipt printer
     settings = receipt_settings()
     notes_height_px = settings.notes_height_px
     image = Image.new("RGB", (LABEL_WIDTH_PX, 3200 + notes_height_px), "white")

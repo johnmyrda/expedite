@@ -1,16 +1,41 @@
 """Order intake form page."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from nicegui import events, run, ui
+from nicegui.elements.button import Button
 
 from expedite.config import PRINTER_NAME
 from expedite.label import render_label
 from expedite.local_files import open_local_path
 from expedite.models import Order, OrderLine
 from expedite.money import display_price, parse_price_cents
+from expedite.pages.application_shell import (
+    ApplicationStatus,
+    application_menu,
+    application_status,
+)
+from expedite.pages.catalog_ui import (
+    catalog_item_matches,
+    compact_catalog_item,
+    effective_event_price_cents,
+)
+from expedite.pages.classic_ui import (
+    adjacent_list_value,
+    classic_dialog,
+    enable_list_keyboard,
+    group_box,
+    labeled_field,
+    update_list_row_selection,
+)
+from expedite.pages.navigation import (
+    event_navigation_tabs,
+    event_not_found_page,
+    event_page_header,
+)
 from expedite.printing import PrintError, print_label
 from expedite.storage.events import get_event
 from expedite.storage.sqlite_store import (
@@ -35,21 +60,21 @@ class LineDraft:
     show_notes: bool = False
 
 
-def register_intake_page() -> None:
-    def show_event_not_found() -> None:
-        with ui.column().classes("w-full max-w-2xl mx-auto p-6 gap-4"):
-            ui.label("Event not found").classes("text-2xl font-bold text-negative")
-            ui.button("Back to Events", on_click=lambda: ui.navigate.to("/"))
-
+def register_intake_page(
+    *,
+    print_label_fn: Callable[[Path], str] = print_label,
+) -> None:
     def render_intake_page(folder_name: str, edit_order_id: int | None = None) -> None:
         event = get_event(folder_name)
         if event is None:
-            show_event_not_found()
+            event_not_found_page()
             return
 
         existing_order = get_order(event, edit_order_id) if edit_order_id else None
         if edit_order_id is not None and existing_order is None:
-            with ui.column().classes("w-full max-w-2xl mx-auto p-6 gap-4"):
+            status = ApplicationStatus("Order not found")
+            with ui.column().classes("app-page w-full p-6 gap-4"):
+                application_menu(status)
                 ui.label(f"Order #{edit_order_id} not found").classes(
                     "text-2xl font-bold text-negative"
                 )
@@ -57,15 +82,12 @@ def register_intake_page() -> None:
                     "Back to Orders",
                     on_click=lambda: ui.navigate.to(f"/events/{folder_name}/orders"),
                 )
+                application_status(status)
             return
 
         catalog = list_catalog_items()
         catalog_by_id = {item.id: item for item in catalog if item.id is not None}
         overrides = event_catalog_prices(event)
-        catalog_options = {0: "Freeform item"}
-        catalog_options.update(
-            {item_id: item.name for item_id, item in catalog_by_id.items() if item.active}
-        )
         favorite_ids = set(list_catalog_favorite_ids())
         favorite_items = [
             item
@@ -85,11 +107,6 @@ def register_intake_page() -> None:
                 )
                 for line in existing_order.line_items
             ]
-            for line in existing_order.line_items:
-                if line.catalog_item_id and line.catalog_item_id not in catalog_options:
-                    item = catalog_by_id.get(line.catalog_item_id)
-                    if item:
-                        catalog_options[line.catalog_item_id] = item.name
         elif existing_order:
             line_drafts = [
                 LineDraft(
@@ -101,33 +118,30 @@ def register_intake_page() -> None:
             line_drafts = [LineDraft()]
 
         ui.page_title(f"{event.name} - Intake")
+        status_detail = (
+            f"Editing order #{existing_order.order_id}" if existing_order else "New order"
+        )
+        status = ApplicationStatus(detail=status_detail)
 
         async def print_label_image(path: Path) -> None:
             try:
-                printer_name = await run.io_bound(print_label, path)
+                printer_name = await run.io_bound(print_label_fn, path)
             except PrintError as error:
                 ui.notify(str(error), type="negative", multi_line=True)
             else:
-                ui.notify(f"Sent label to {printer_name}", type="positive")
+                status.update("Label sent to printer", printer_name)
 
-        with ui.column().classes("w-full max-w-4xl mx-auto p-6 gap-6"):
-            with ui.row().classes("w-full items-center justify-between"):
-                with ui.row().classes("items-center gap-2"):
-                    ui.label(event.name).classes("text-3xl font-bold")
-                    ui.button(
-                        icon="folder_open",
-                        on_click=lambda: open_local_path(event.path),
-                    ).props("flat round dense").classes("text-primary").tooltip(str(event.path))
-                with ui.row().classes("gap-2"):
-                    ui.button(
-                        "Manage",
-                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/manage"),
-                    ).props("flat")
-                    ui.button(
-                        "Orders",
-                        on_click=lambda: ui.navigate.to(f"/events/{event.folder_name()}/orders"),
-                    ).props("flat")
-                    ui.button("Events", on_click=lambda: ui.navigate.to("/")).props("flat")
+        async def print_receipt(path: Path, button: Button) -> None:
+            button.disable()
+            try:
+                await print_label_image(path)
+            finally:
+                button.enable()
+
+        with ui.column().classes("app-page w-full p-6 gap-6"):
+            application_menu(status)
+            event_page_header(event)
+            event_navigation_tabs(event.folder_name(), "intake")
 
             warning_box = ui.card().classes("w-full bg-amber-50 hidden")
             with warning_box:
@@ -136,37 +150,36 @@ def register_intake_page() -> None:
                 )
                 warning_list = ui.column().classes("gap-1")
 
-            with ui.card().classes("w-full"):
+            with ui.column().classes("event-page-content w-full gap-4"):
                 current_order_id = (
                     existing_order.order_id if existing_order else next_order_id(event)
                 )
                 title_prefix = "Edit Order" if existing_order else "Order"
-                order_title = ui.label(f"{title_prefix} #{current_order_id}").classes(
-                    "text-xl font-semibold"
-                )
-                name_input = (
-                    ui.input(
-                        "Name",
-                        value=existing_order.name if existing_order else "",
-                        validation=validate_name,
+                with ui.row().classes("w-full items-center justify-between gap-2"):
+                    order_title = ui.label(f"{title_prefix} #{current_order_id}").classes(
+                        "text-xl font-semibold"
                     )
-                    .props("outlined debounce=2000")
-                    .classes("w-full")
-                )
-                phone_input = (
-                    ui.input(
-                        "Phone",
-                        value=existing_order.phone if existing_order else "",
-                        validation=validate_phone,
-                    )
-                    .props("outlined debounce=2000")
-                    .classes("w-full")
-                )
+                    total_label = ui.label().classes("text-xl font-semibold")
 
-                ui.separator()
-                with ui.row().classes("w-full items-center justify-between"):
-                    ui.label("Line Items").classes("text-lg font-semibold")
-                    total_label = ui.label().classes("text-lg font-semibold")
+                with ui.element("div").classes("intake-customer-fields w-full"):
+                    with labeled_field("Name"):
+                        name_input = (
+                            ui.input(
+                                value=existing_order.name if existing_order else "",
+                                validation=validate_name,
+                            )
+                            .props("outlined debounce=2000")
+                            .classes("w-full")
+                        )
+                    with labeled_field("Phone"):
+                        phone_input = (
+                            ui.input(
+                                value=existing_order.phone if existing_order else "",
+                                validation=validate_phone,
+                            )
+                            .props("outlined debounce=2000")
+                            .classes("w-full")
+                        )
 
                 def draft_total_cents() -> int:
                     total = 0
@@ -199,20 +212,22 @@ def register_intake_page() -> None:
                         line_drafts.append(line)
                     line.catalog_item_id = item_id
                     line.description = item.name
-                    price_cents = overrides.get(item_id, item.base_price_cents)
+                    price_cents = effective_event_price_cents(item, overrides)
                     line.unit_price = f"{price_cents / 100:.2f}"
                     line_editor.refresh()
                     update_total()
 
                 if favorite_items:
-                    ui.label("Favorites").classes("text-sm font-medium text-gray-600")
-                    with ui.row().classes("w-full gap-1 flex-wrap"):
+                    with (
+                        group_box("Quick Add"),
+                        ui.element("div").classes("classic-quick-add-grid w-full"),
+                    ):
                         for favorite_item in favorite_items:
                             favorite_id = favorite_item.id
                             if favorite_id is None:
                                 continue
-                            favorite_price = overrides.get(
-                                favorite_id, favorite_item.base_price_cents
+                            favorite_price = effective_event_price_cents(
+                                favorite_item, overrides
                             )
                             description = favorite_item.description or "No description"
 
@@ -221,14 +236,19 @@ def register_intake_page() -> None:
                             ) -> None:
                                 add_favorite_item(selected_id)
 
-                            alt_text = f"{description} · Cost: {display_price(favorite_price)}"
-                            favorite_chip = ui.chip(
-                                favorite_item.name,
-                                color="primary",
-                                on_click=add_selected_favorite,
-                            ).props("outline square")
-                            favorite_chip.props["aria-label"] = alt_text
-                            favorite_chip.tooltip(alt_text)
+                            alt_text = (
+                                f"{favorite_item.name} · {description} · "
+                                f"Cost: {display_price(favorite_price)}"
+                            )
+                            favorite_button = (
+                                ui.button(on_click=add_selected_favorite)
+                                .props("flat no-caps align=left")
+                                .classes("classic-quick-add-button w-full")
+                            )
+                            with favorite_button:
+                                ui.label(favorite_item.name).classes("button-label")
+                            favorite_button.props["aria-label"] = alt_text
+                            favorite_button.tooltip(alt_text)
 
                 @ui.refreshable
                 def line_editor() -> None:
@@ -238,89 +258,199 @@ def register_intake_page() -> None:
                             if item_id is not None:
                                 item = catalog_by_id[item_id]
                                 line.description = item.name
-                                cents = overrides.get(item_id, item.base_price_cents)
+                                cents = effective_event_price_cents(item, overrides)
                                 line.unit_price = f"{cents / 100:.2f}"
                             line_editor.refresh()
                             update_total()
 
                         with ui.card().classes("w-full bg-gray-50"):
-                            with ui.row().classes("w-full items-center gap-2 flex-wrap"):
-                                ui.label(f"#{index}").classes("font-medium w-8")
-                                catalog_input = (
-                                    ui.input(
-                                        "Item / description",
-                                        value=line.description,
-                                        placeholder="Type to search or enter a custom item",
-                                    )
-                                    .props("outlined dense autocomplete=off")
-                                    .classes("grow min-w-56")
-                                )
-
-                                def catalog_option_label(item_id: int, name: str) -> str:
-                                    item = catalog_by_id[item_id]
-                                    price = overrides.get(item_id, item.base_price_cents)
-                                    return f"{name} · {display_price(price)}"
-
-                                full_options = {
-                                    item_id: catalog_option_label(item_id, name)
-                                    for item_id, name in catalog_options.items()
-                                    if item_id
-                                }
-                                with (
-                                    ui.dialog() as full_catalog_dialog,
-                                    ui.card().classes("w-full max-w-xl"),
-                                ):
-                                    ui.label("Select Catalog Item").classes("text-lg font-semibold")
-                                    full_select = (
-                                        ui.select(
-                                            full_options,
-                                            value=line.catalog_item_id,
-                                            label="Catalog item",
-                                            with_input=True,
+                            with ui.row().classes("w-full items-end gap-2 flex-wrap"):
+                                ui.label(f"#{index}").classes("font-medium w-8 pb-2")
+                                with labeled_field("Item / description", classes="grow min-w-56"):
+                                    catalog_input = (
+                                        ui.input(
+                                            value=line.description,
+                                            placeholder="Type to search or enter a custom item",
                                         )
-                                        .props("outlined options-dense")
+                                        .props("outlined dense autocomplete=off")
                                         .classes("w-full")
                                     )
 
-                                    def select_from_full_catalog() -> None:
-                                        selected = (
-                                            int(full_select.value)
-                                            if full_select.value is not None
-                                            else None
-                                        )
-                                        full_catalog_dialog.close()
-                                        choose_catalog_item(selected)
+                                selected_catalog_id = line.catalog_item_id
+                                catalog_query = ""
 
-                                    with ui.row().classes("gap-2"):
-                                        ui.button(
-                                            "Select",
-                                            on_click=select_from_full_catalog,
-                                        ).props("color=primary")
-                                        ui.button(
-                                            icon="cancel",
-                                            on_click=full_catalog_dialog.close,
-                                        ).props("flat round").tooltip("Cancel")
+                                def picker_items() -> list[int]:
+                                    query = catalog_query.strip().casefold()
+                                    return [
+                                        item_id
+                                        for item_id, item in catalog_by_id.items()
+                                        if item.active or item_id == line.catalog_item_id
+                                        if catalog_item_matches(item, query)
+                                    ]
 
-                                ui.button(
-                                    icon="expand_circle_down",
-                                    on_click=full_catalog_dialog.open,
-                                ).props("flat round dense").tooltip("Browse full catalog")
-
-                                quantity_input = (
-                                    ui.number(
-                                        "Qty",
-                                        value=line.quantity,
-                                        min=1,
-                                        step=1,
+                                def accept_catalog_item(item_id: int | None = None) -> None:
+                                    selected = (
+                                        item_id if item_id is not None else selected_catalog_id
                                     )
-                                    .props("outlined dense")
-                                    .classes("w-24")
+                                    if selected is None:
+                                        return
+                                    full_catalog_dialog.close()
+                                    choose_catalog_item(selected)
+
+                                with classic_dialog(
+                                    "Select Catalog Item",
+                                    accept_label="Select",
+                                    on_accept=accept_catalog_item,
+                                    width="560px",
+                                    submit_on_enter=False,
+                                ) as full_catalog_dialog:
+                                    with labeled_field("Filter by name or description"):
+                                        picker_filter = (
+                                            ui.input().props("outlined clearable").classes("w-full")
+                                        )
+                                    full_catalog_dialog.set_initial_focus(picker_filter)
+
+                                    @ui.refreshable
+                                    def picker_list() -> None:
+                                        nonlocal selected_catalog_id
+                                        item_ids = picker_items()
+                                        if selected_catalog_id not in item_ids:
+                                            selected_catalog_id = None
+                                        if full_catalog_dialog.default_button is not None:
+                                            full_catalog_dialog.default_button.enabled = (
+                                                selected_catalog_id is not None
+                                            )
+                                        row_elements = {}
+
+                                        def select_item(item_id: int) -> None:
+                                            nonlocal selected_catalog_id
+                                            update_list_row_selection(
+                                                picker_table,
+                                                row_elements,
+                                                previous=selected_catalog_id,
+                                                selected=item_id,
+                                            )
+                                            selected_catalog_id = item_id
+                                            if full_catalog_dialog.default_button is not None:
+                                                full_catalog_dialog.default_button.enable()
+
+                                        def move_selection(offset: int) -> None:
+                                            item_id = adjacent_list_value(
+                                                item_ids, selected_catalog_id, offset
+                                            )
+                                            if item_id is None:
+                                                return
+                                            select_item(item_id)
+                                            row_elements[item_id].run_method(
+                                                "scrollIntoView", {"block": "nearest"}
+                                            )
+
+                                        with (
+                                            ui.element("div").classes(
+                                                "classic-list-panel catalog-picker-panel"
+                                            ),
+                                            ui.element("table")
+                                            .classes("classic-list catalog-picker-list")
+                                            .props('aria-label="Catalog items"') as picker_table,
+                                        ):
+                                            enable_list_keyboard(
+                                                picker_table,
+                                                on_move=move_selection,
+                                                on_activate=lambda: accept_catalog_item(),
+                                            )
+                                            with ui.element("thead"), ui.element("tr"):
+                                                with ui.element("th"):
+                                                    ui.label("Item")
+                                                with ui.element("th").style("width: 120px"):
+                                                    ui.label("Price")
+                                            with ui.element("tbody"):
+                                                if not item_ids:
+                                                    with (
+                                                        ui.element("tr"),
+                                                        ui.element("td").props("colspan=2"),
+                                                    ):
+                                                        ui.label(
+                                                            "No catalog items match this filter."
+                                                        )
+                                                for item_id in item_ids:
+                                                    item = catalog_by_id[item_id]
+                                                    row_classes = "classic-list-row"
+                                                    if item_id == selected_catalog_id:
+                                                        row_classes += " is-selected"
+                                                    if not item.active:
+                                                        row_classes += " is-inactive"
+                                                    row = ui.element("tr").classes(row_classes)
+                                                    if not item.active:
+                                                        row.props('title="Inactive catalog item"')
+                                                    row_elements[item_id] = row
+                                                    row.on(
+                                                        "click",
+                                                        lambda selected_id=item_id: select_item(
+                                                            selected_id
+                                                        ),
+                                                    ).on(
+                                                        "dblclick",
+                                                        lambda selected_id=item_id: (
+                                                            accept_catalog_item(selected_id)
+                                                        ),
+                                                    )
+                                                    with row:
+                                                        with ui.element("td"):
+                                                            compact_catalog_item(item)
+                                                        with ui.element("td"):
+                                                            price = effective_event_price_cents(
+                                                                item, overrides
+                                                            )
+                                                            ui.label(display_price(price))
+
+                                    def filter_picker(
+                                        change: events.ValueChangeEventArguments[str | None],
+                                    ) -> None:
+                                        nonlocal catalog_query
+                                        catalog_query = change.value or ""
+                                        picker_list.refresh()
+
+                                    picker_filter.on_value_change(filter_picker)
+                                    picker_list()
+
+                                if full_catalog_dialog.default_button is not None:
+                                    full_catalog_dialog.default_button.enabled = (
+                                        selected_catalog_id is not None
+                                    )
+
+                                def open_catalog_picker() -> None:
+                                    nonlocal selected_catalog_id, catalog_query
+                                    selected_catalog_id = line.catalog_item_id
+                                    catalog_query = ""
+                                    picker_filter.value = ""
+                                    picker_list.refresh()
+                                    full_catalog_dialog.open()
+
+                                search_button = ui.button(
+                                    icon="search",
+                                    on_click=open_catalog_picker,
+                                ).props("flat round dense")
+                                search_button.props["aria-label"] = (
+                                    f"Search catalog for line {index}"
                                 )
-                                price_input = (
-                                    ui.input("Unit price", value=line.unit_price)
-                                    .props("outlined dense prefix=$ inputmode=decimal")
-                                    .classes("w-36")
-                                )
+                                search_button.tooltip("Search catalog")
+
+                                with labeled_field("Quantity", classes="w-24"):
+                                    quantity_input = (
+                                        ui.number(
+                                            value=line.quantity,
+                                            min=1,
+                                            step=1,
+                                        )
+                                        .props("outlined dense")
+                                        .classes("w-full")
+                                    )
+                                with labeled_field("Unit price", classes="w-36"):
+                                    price_input = (
+                                        ui.input(value=line.unit_price)
+                                        .props("outlined dense prefix=$ inputmode=decimal")
+                                        .classes("w-full")
+                                    )
 
                                 if not line.notes and not line.show_notes:
 
@@ -328,9 +458,11 @@ def register_intake_page() -> None:
                                         line.show_notes = True
                                         line_editor.refresh()
 
-                                    ui.button(icon="edit_note", on_click=show_notes).props(
-                                        "flat round dense"
-                                    ).tooltip("Add notes")
+                                    notes_button = ui.button(
+                                        icon="edit_note", on_click=show_notes
+                                    ).props("flat round dense")
+                                    notes_button.props["aria-label"] = f"Add notes to line {index}"
+                                    notes_button.tooltip("Add notes")
 
                                 def remove_line() -> None:
                                     line_drafts.remove(line)
@@ -339,9 +471,11 @@ def register_intake_page() -> None:
                                     line_editor.refresh()
                                     update_total()
 
-                                ui.button(icon="delete", on_click=remove_line).props(
-                                    "flat round dense color=negative"
-                                ).tooltip("Remove line")
+                                remove_button = ui.button(
+                                    icon="delete", on_click=remove_line
+                                ).props("flat round dense color=negative")
+                                remove_button.props["aria-label"] = f"Remove line {index}"
+                                remove_button.tooltip("Remove line")
 
                             @ui.refreshable
                             def catalog_suggestions() -> None:
@@ -351,11 +485,8 @@ def register_intake_page() -> None:
                                 matches = [
                                     item
                                     for item_id, item in catalog_by_id.items()
-                                    if item_id in full_options
-                                    and (
-                                        query in item.name.casefold()
-                                        or query in (item.description or "").casefold()
-                                    )
+                                    if (item.active or item_id == line.catalog_item_id)
+                                    and catalog_item_matches(item, query)
                                 ][:5]
                                 if not matches:
                                     return
@@ -366,7 +497,7 @@ def register_intake_page() -> None:
 
                                     def render_suggestion(item_id: int) -> None:
                                         item = catalog_by_id[item_id]
-                                        price = overrides.get(item_id, item.base_price_cents)
+                                        price = effective_event_price_cents(item, overrides)
                                         ui.button(
                                             f"{item.name} · {display_price(price)}",
                                             on_click=lambda: choose_catalog_item(item_id),
@@ -380,11 +511,12 @@ def register_intake_page() -> None:
 
                             notes_input = None
                             if line.notes or line.show_notes:
-                                notes_input = (
-                                    ui.input("Notes", value=line.notes)
-                                    .props("outlined dense")
-                                    .classes("w-full")
-                                )
+                                with labeled_field("Notes"):
+                                    notes_input = (
+                                        ui.input(value=line.notes)
+                                        .props("outlined dense")
+                                        .classes("w-full")
+                                    )
 
                             def search_catalog(
                                 change: events.ValueChangeEventArguments[str | None],
@@ -429,12 +561,10 @@ def register_intake_page() -> None:
                     for index, line in enumerate(line_drafts, start=1):
                         render_line(index, line)
 
-                    def add_line() -> None:
-                        line_drafts.append(LineDraft())
-                        line_editor.refresh()
-                        update_total()
-
-                    ui.button("Add Line Item", icon="add", on_click=add_line).props("flat")
+                def add_line() -> None:
+                    line_drafts.append(LineDraft())
+                    line_editor.refresh()
+                    update_total()
 
                 line_editor()
                 update_total()
@@ -494,67 +624,98 @@ def register_intake_page() -> None:
                     update_total()
 
                 async def handle_submit() -> None:
-                    line_items, warnings = collect_line_items()
-                    work_request = (
-                        "; ".join(
-                            f"{line.description} x{line.quantity}"
-                            if line.quantity > 1
-                            else line.description
-                            for line in line_items
+                    submit_button.disable()
+                    try:
+                        line_items, warnings = collect_line_items()
+                        work_request = (
+                            "; ".join(
+                                f"{line.description} x{line.quantity}"
+                                if line.quantity > 1
+                                else line.description
+                                for line in line_items
+                            )
+                            or "No line items"
                         )
-                        or "No line items"
-                    )
-                    total_cents = sum(line.quantity * line.unit_price_cents for line in line_items)
-                    order = Order.model_construct(
-                        order_id=(
-                            existing_order.order_id if existing_order else next_order_id(event)
-                        ),
-                        timestamp=(
-                            existing_order.timestamp
-                            if existing_order
-                            else datetime.now().astimezone()
-                        ),
-                        event=event,
-                        name=name_input.value,
-                        phone=phone_input.value,
-                        work_request=work_request,
-                        cost=f"{total_cents / 100:.2f}",
-                        line_items=line_items,
-                    )
+                        total_cents = sum(
+                            line.quantity * line.unit_price_cents for line in line_items
+                        )
+                        order = Order.model_construct(
+                            order_id=(
+                                existing_order.order_id
+                                if existing_order
+                                else next_order_id(event)
+                            ),
+                            timestamp=(
+                                existing_order.timestamp
+                                if existing_order
+                                else datetime.now().astimezone()
+                            ),
+                            event=event,
+                            name=name_input.value,
+                            phone=phone_input.value,
+                            work_request=work_request,
+                            cost=f"{total_cents / 100:.2f}",
+                            line_items=line_items,
+                        )
 
-                    label_path = render_label(order)
-                    saved_order = order.model_copy(update={"label_filename": label_path.name})
-                    if existing_order:
-                        update_order(saved_order)
-                    else:
-                        append_order(saved_order)
+                        label_path = render_label(order)
+                        saved_order = order.model_copy(update={"label_filename": label_path.name})
+                        if existing_order:
+                            update_order(saved_order)
+                        else:
+                            append_order(saved_order)
 
-                    show_warnings(warnings)
-                    status_area.clear()
-                    with status_area, ui.row().classes("items-center gap-2"):
+                        show_warnings(warnings)
+                        status_area.clear()
+                        with status_area, ui.row().classes("items-center gap-2"):
+                            ui.label(f"Order #{saved_order.order_id} receipt")
+                            receipt_button = ui.button(
+                                icon="article",
+                                on_click=lambda path=label_path: open_local_path(path),
+                            ).props("flat round dense").classes("text-primary")
+                            receipt_button.props["aria-label"] = (
+                                f"Open receipt for order {saved_order.order_id}"
+                            )
+                            receipt_button.tooltip(str(label_path))
+                            print_button = (
+                                ui.button(icon="print")
+                                .props("flat round dense")
+                                .classes("text-primary")
+                            )
+                            print_button.on_click(
+                                lambda path=label_path, button=print_button: print_receipt(
+                                    path, button
+                                )
+                            )
+                            print_button.props["aria-label"] = (
+                                f"Print receipt for order {saved_order.order_id}"
+                            )
+                            print_button.props["data-testid"] = "print-created-receipt"
+                            print_button.tooltip(f"Print on {PRINTER_NAME}")
                         verb = "Updated" if existing_order else "Saved"
-                        ui.label(f"{verb} order #{saved_order.order_id}").classes("text-positive")
-                        ui.button(
-                            icon="article",
-                            on_click=lambda path=label_path: open_local_path(path),
-                        ).props("flat round dense").classes("text-primary").tooltip(str(label_path))
-                        ui.button(
-                            icon="print",
-                            on_click=lambda path=label_path: print_label_image(path),
-                        ).props("flat round dense").classes("text-primary").tooltip(
-                            f"Print on {PRINTER_NAME}"
-                        )
-                    ui.notify(
-                        f"{'Updated' if existing_order else 'Saved'} order #{saved_order.order_id}",
-                        type="positive",
-                    )
-                    await print_label_image(label_path)
-                    if not existing_order:
-                        clear_form()
-                        order_title.text = f"Order #{next_order_id(event)}"
+                        status.update(f"{verb} order #{saved_order.order_id}", label_path.name)
+                        await print_label_image(label_path)
+                        if not existing_order:
+                            clear_form()
+                            order_title.text = f"Order #{next_order_id(event)}"
+                    finally:
+                        submit_button.enable()
 
                 submit_text = "Save Changes" if existing_order else "Submit Order"
-                ui.button(submit_text, on_click=handle_submit).props("color=primary size=lg")
+                with ui.row().classes(
+                    "intake-action-row w-full flex-nowrap items-center justify-between gap-2"
+                ):
+                    ui.button("Add Line Item", icon="add", on_click=add_line).props("flat")
+                    submit_button = (
+                        ui.button("+", on_click=handle_submit)
+                        .props("color=primary icon=save icon-right=receipt_long no-caps")
+                        .classes("order-submit-button")
+                    )
+                    submit_button.props["aria-label"] = submit_text
+                    submit_button.props["data-testid"] = "submit-order"
+                    submit_button.tooltip(f"{submit_text}: save order and create receipt")
+
+            application_status(status)
 
     @ui.page("/events/{folder_name}")
     def intake_page(folder_name: str) -> None:

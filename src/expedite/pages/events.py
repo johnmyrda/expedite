@@ -1,185 +1,255 @@
 """Events landing page."""
 
-import base64
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
-from nicegui import events as ui_events
 from nicegui import ui
 
-from expedite.config import APP_NAME, MAX_LABEL_NOTES_HEIGHT_MM, PRINTER_NAME, data_dir
+from expedite.config import APP_NAME, data_dir
 from expedite.local_files import open_local_path
-from expedite.storage.events import create_event, list_events
-from expedite.storage.settings import (
-    MAX_LOGO_BYTES,
-    receipt_settings,
-    save_receipt_settings,
-    validate_receipt_logo_png,
+from expedite.models import Event
+from expedite.pages.application_shell import (
+    ApplicationStatus,
+    application_menu,
+    application_status,
 )
+from expedite.pages.classic_ui import (
+    adjacent_list_value,
+    classic_dialog,
+    enable_list_keyboard,
+    group_box,
+    labeled_field,
+    sortable_header,
+    update_list_row_selection,
+)
+from expedite.storage.events import create_event, list_events
+
+EventSortKey = Literal["name", "start_date", "folder"]
+
+
+@dataclass
+class EventsPageState:
+    """Mutable selection and sorting state for the events list."""
+
+    selected_folder: str | None = None
+    sort_key: EventSortKey = "start_date"
+    sort_descending: bool = True
 
 
 def register_events_page() -> None:
     @ui.page("/")
     def events_page() -> None:
         ui.page_title(APP_NAME)
-        ui.add_head_html("<style>body { background: #f7f7f7; }</style>")
+        status = ApplicationStatus()
 
-        with ui.column().classes("w-full max-w-3xl mx-auto p-6 gap-6"):
+        with ui.column().classes("app-page events-page w-full p-6 gap-6"):
             app_data_dir = data_dir()
 
-            current_settings = receipt_settings()
-            pending_logo = current_settings.logo_png
-            with ui.dialog() as settings_dialog, ui.card().classes("w-full max-w-md"):
-                ui.label("Receipt Settings").classes("text-xl font-semibold")
-                ui.label(f"Printer: {PRINTER_NAME}").classes("text-sm text-gray-600")
-                receipt_name_input = (
-                    ui.input("Receipt name", value=current_settings.name)
-                    .props("outlined maxlength=60")
-                    .classes("w-full")
-                )
-                notes_height_input = (
-                    ui.number(
-                        "Blank Notes area height",
-                        value=current_settings.notes_height_mm,
-                        min=0,
-                        max=MAX_LABEL_NOTES_HEIGHT_MM,
-                        step=5,
-                    )
-                    .props("outlined suffix=mm")
-                    .classes("w-full")
-                )
+            def create_new_event() -> None:
+                name = (event_name_input.value or "").strip()
+                if not name:
+                    ui.notify("Event name is required.", type="negative")
+                    event_name_input.run_method("focus")
+                    return
+                start_date = (event_date_input.value or "").strip()
+                if not start_date:
+                    ui.notify("Start date is required.", type="negative")
+                    event_date_input.run_method("focus")
+                    return
+                event = create_event(name, start_date)
+                ui.navigate.to(f"/events/{event.folder_name()}")
 
-                @ui.refreshable
-                def logo_preview() -> None:
-                    if pending_logo is None:
-                        ui.label("No receipt logo configured").classes("text-sm text-gray-500")
-                        return
-                    encoded = base64.b64encode(pending_logo).decode("ascii")
-                    ui.image(f"data:image/png;base64,{encoded}").classes(
-                        "w-full max-h-40 object-contain border rounded"
-                    )
-
-                    def remove_logo() -> None:
-                        nonlocal pending_logo
-                        pending_logo = None
-                        logo_preview.refresh()
-
-                    ui.button("Remove logo", icon="delete", on_click=remove_logo).props(
-                        "flat color=negative"
-                    )
-
-                logo_preview()
-
-                async def upload_logo(event: ui_events.UploadEventArguments) -> None:
-                    nonlocal pending_logo
-                    data = await event.file.read()
-                    try:
-                        validate_receipt_logo_png(data)
-                    except ValueError as error:
-                        ui.notify(str(error), type="negative")
-                        return
-                    pending_logo = data
-                    logo_preview.refresh()
-                    logo_upload.reset()
-
-                logo_upload = (
-                    ui.upload(
-                        label="Upload PNG logo",
-                        auto_upload=True,
-                        max_file_size=MAX_LOGO_BYTES,
-                        on_upload=upload_logo,
-                        on_rejected=lambda: ui.notify(
-                            "Logo must be a PNG file no larger than 5 MB.", type="negative"
-                        ),
-                    )
-                    .props("accept=.png")
-                    .classes("w-full")
-                )
-
-                def save_settings() -> None:
-                    try:
-                        save_receipt_settings(
-                            name=receipt_name_input.value or "",
-                            notes_height_mm=float(notes_height_input.value or 0),
-                            logo_png=pending_logo,
+            with classic_dialog(
+                "New Event",
+                accept_label="Create",
+                on_accept=create_new_event,
+                width="460px",
+            ) as new_event_dialog:
+                new_event_dialog.element.props('data-testid="new-event-dialog"')
+                with group_box("Event Details"):
+                    with labeled_field("Event name"):
+                        event_name_input = (
+                            ui.input().props("outlined maxlength=120").classes("w-full")
                         )
-                    except ValueError as error:
-                        ui.notify(str(error), type="negative")
-                        return
-                    settings_dialog.close()
-                    ui.notify("Receipt settings saved", type="positive")
+                    with labeled_field("Start date"):
+                        event_date_input = ui.input().props("outlined type=date").classes("w-full")
+                new_event_dialog.set_initial_focus(event_name_input)
 
-                with ui.row().classes("justify-end gap-2"):
-                    ui.button("Cancel", on_click=settings_dialog.close).props("flat")
-                    ui.button("Save", on_click=save_settings).props("color=primary")
+            def open_new_event() -> None:
+                event_name_input.value = ""
+                event_date_input.value = datetime.now().astimezone().date().isoformat()
+                new_event_dialog.open()
 
-            def open_settings() -> None:
-                nonlocal pending_logo
-                saved_settings = receipt_settings()
-                receipt_name_input.value = saved_settings.name
-                notes_height_input.value = saved_settings.notes_height_mm
-                pending_logo = saved_settings.logo_png
-                logo_preview.refresh()
-                logo_upload.reset()
-                settings_dialog.open()
-
-            with ui.row().classes("w-full items-center justify-between"):
+            application_menu(status)
+            with ui.row().classes("app-page-header w-full items-center justify-between"):
                 with ui.row().classes("items-center gap-2"):
-                    ui.label(APP_NAME).classes("text-3xl font-bold")
-                    ui.button(
+                    ui.label(APP_NAME).classes("app-page-title text-3xl font-bold")
+                    data_folder_button = ui.button(
                         icon="folder_open",
                         on_click=lambda: open_local_path(app_data_dir),
-                    ).props("flat round dense").classes("text-primary").tooltip(str(app_data_dir))
-                with ui.row().classes("items-center gap-1"):
-                    ui.button(
-                        icon="settings",
-                        on_click=open_settings,
-                    ).props("flat round").tooltip("Receipt settings")
-                    ui.button("Catalog", on_click=lambda: ui.navigate.to("/catalog")).props("flat")
-
-            with ui.card().classes("w-full"):
-                ui.label("Create New Event").classes("text-xl font-semibold")
-                name_input = ui.input("Event name").props("outlined").classes("w-full")
-                today = datetime.now().astimezone().date().isoformat()
-                date_input = (
-                    ui.input("Start date", value=today)
-                    .props("outlined type=date")
-                    .classes("w-full")
+                    ).props("flat round dense").classes("text-primary")
+                    data_folder_button.props["aria-label"] = "Open data folder"
+                    data_folder_button.tooltip(str(app_data_dir))
+                ui.button("New Event...", on_click=open_new_event).props(
+                    'color=primary data-testid="new-event"'
                 )
 
-                def handle_create() -> None:
-                    event = create_event(
-                        name_input.value or "Untitled Event", date_input.value or None
+            events = list_events()
+            state = EventsPageState()
+
+            def sorted_events() -> list[Event]:
+                key = state.sort_key
+                key_functions = {
+                    "name": lambda event: event.name.casefold(),
+                    "start_date": lambda event: event.start_date,
+                    "folder": lambda event: event.folder_name().casefold(),
+                }
+                return sorted(
+                    events,
+                    key=key_functions[key],
+                    reverse=state.sort_descending,
+                )
+
+            def selected_event() -> Event | None:
+                return next(
+                    (event for event in events if event.folder_name() == state.selected_folder),
+                    None,
+                )
+
+            def navigate_selected(suffix: str = "") -> None:
+                event = selected_event()
+                if event is not None:
+                    ui.navigate.to(f"/events/{event.folder_name()}{suffix}")
+
+            def update_status() -> None:
+                event = selected_event()
+                detail = (
+                    f"{event.name} selected · {len(events)} event(s)"
+                    if event is not None
+                    else f"{len(events)} event(s)"
+                )
+                status.update("Ready", detail)
+
+            with group_box("Recent Events"):
+                row_elements = {}
+
+                def configure_toolbar() -> None:
+                    enabled = selected_event() is not None
+                    intake_button.enabled = enabled
+                    orders_button.enabled = enabled
+                    management_button.enabled = enabled
+
+                def select_event(folder_name: str) -> None:
+                    update_list_row_selection(
+                        event_table,
+                        row_elements,
+                        previous=state.selected_folder,
+                        selected=folder_name,
                     )
-                    ui.navigate.to(f"/events/{event.folder_name()}")
+                    state.selected_folder = folder_name
+                    configure_toolbar()
+                    update_status()
 
-                ui.button("Create New", on_click=handle_create).props("color=primary")
+                def move_selection(offset: int) -> None:
+                    folders = [event.folder_name() for event in sorted_events()]
+                    folder_name = adjacent_list_value(folders, state.selected_folder, offset)
+                    if folder_name is None:
+                        return
+                    select_event(folder_name)
+                    row_elements[folder_name].run_method(
+                        "scrollIntoView", {"block": "nearest"}
+                    )
 
-            with ui.card().classes("w-full"):
-                ui.label("Recent Events").classes("text-xl font-semibold")
-                events = list_events()
-                if not events:
-                    ui.label("No events yet. Create one above to begin.").classes("text-gray-500")
-                else:
-                    for event in events:
-                        with ui.row().classes("w-full items-center justify-between border-b py-2"):
-                            with ui.column().classes("gap-0"):
-                                ui.link(
-                                    event.name,
-                                    f"/events/{event.folder_name()}/manage",
-                                ).classes("font-medium text-primary no-underline")
-                                ui.label(f"{event.start_date} · {event.folder_name()}").classes(
-                                    "text-sm text-gray-500"
+                with ui.row().classes("classic-list-toolbar w-full items-center gap-1"):
+                    intake_button = ui.button(
+                        icon="assignment",
+                        on_click=lambda: navigate_selected(),
+                    ).props("flat round dense")
+                    intake_button.props["aria-label"] = "Open Intake"
+                    intake_button.tooltip("Open Intake")
+                    orders_button = ui.button(
+                        icon="receipt_long",
+                        on_click=lambda: navigate_selected("/orders"),
+                    ).props("flat round dense")
+                    orders_button.props["aria-label"] = "Open Orders"
+                    orders_button.tooltip("Open Orders")
+                    management_button = ui.button(
+                        icon="settings",
+                        on_click=lambda: navigate_selected("/manage"),
+                    ).props("flat round dense")
+                    management_button.props["aria-label"] = "Open Management"
+                    management_button.tooltip("Open Management")
+                    configure_toolbar()
+
+                with (
+                    ui.element("div").classes("classic-list-panel page-scroll-list"),
+                    ui.element("table")
+                    .classes("classic-list event-list")
+                    .props('aria-label="Recent events"') as event_table,
+                ):
+                    enable_list_keyboard(
+                        event_table,
+                        on_move=move_selection,
+                        on_activate=lambda: navigate_selected(),
+                    )
+
+                    @ui.refreshable
+                    def event_table_contents() -> None:
+                        row_elements.clear()
+
+                        def change_sort(key: EventSortKey) -> None:
+                            if state.sort_key == key:
+                                state.sort_descending = not state.sort_descending
+                            else:
+                                state.sort_key = key
+                                state.sort_descending = False
+                            event_table_contents.refresh()
+
+                        with ui.element("thead"), ui.element("tr"):
+                            for heading, key, width in (
+                                ("Event", "name", "40%"),
+                                ("Start Date", "start_date", "180px"),
+                                ("Folder", "folder", "auto"),
+                            ):
+                                with ui.element("th").style(f"width: {width}"):
+                                    sortable_header(
+                                        heading,
+                                        active=state.sort_key == key,
+                                        descending=state.sort_descending,
+                                        on_click=lambda sort_key=key: change_sort(sort_key),
+                                    )
+                        with ui.element("tbody"):
+                            if not events:
+                                with (
+                                    ui.element("tr"),
+                                    ui.element("td").props("colspan=3"),
+                                ):
+                                    ui.label("No events yet. Choose New Event... to begin.")
+
+                            for event in sorted_events():
+                                folder_name = event.folder_name()
+                                selected = folder_name == state.selected_folder
+                                row = ui.element("tr").classes(
+                                    "classic-list-row" + (" is-selected" if selected else "")
                                 )
-                            with ui.row().classes("gap-2"):
-                                ui.button(
-                                    "Intake",
-                                    on_click=lambda e=event: ui.navigate.to(
-                                        f"/events/{e.folder_name()}"
-                                    ),
+                                row_elements[folder_name] = row
+                                row.on(
+                                    "click",
+                                    lambda folder=folder_name: select_event(folder),
+                                ).on(
+                                    "dblclick",
+                                    lambda folder=folder_name: ui.navigate.to(f"/events/{folder}"),
                                 )
-                                ui.button(
-                                    "Orders",
-                                    on_click=lambda e=event: ui.navigate.to(
-                                        f"/events/{e.folder_name()}/orders"
-                                    ),
-                                ).props("flat")
+                                with row:
+                                    with ui.element("td"):
+                                        ui.label(event.name).classes("font-medium")
+                                    with ui.element("td"):
+                                        ui.label(event.start_date)
+                                    with ui.element("td"):
+                                        ui.label(folder_name)
+
+                    event_table_contents()
+
+            update_status()
+            application_status(status)

@@ -1,0 +1,1030 @@
+/* NiceGUI/Quasar compatibility layer for the vendored 98.css design system. */
+@font-face {
+  font-family: "Expedite Tahoma";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local("Tahoma"), url("/expedite-static/wine_tahoma.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Expedite Tahoma";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local("Tahoma Bold"), url("/expedite-static/wine_tahoma_bold.ttf") format("truetype");
+}
+
+:root {
+  --win98-surface: #c0c0c0;
+  --win98-face: #dfdfdf;
+  --win98-highlight: #ffffff;
+  --win98-shadow: #808080;
+  --win98-frame: #0a0a0a;
+  --win98-blue: #000080;
+  --win98-blue-light: #1084d0;
+  --win98-raised: inset -1px -1px var(--win98-frame), inset 1px 1px var(--win98-highlight), inset -2px -2px var(--win98-shadow), inset 2px 2px var(--win98-face);
+  --win98-sunken: inset -1px -1px var(--win98-highlight), inset 1px 1px var(--win98-frame), inset -2px -2px var(--win98-face), inset 2px 2px var(--win98-shadow);
+  --win98-window: inset -1px -1px var(--win98-frame), inset 1px 1px var(--win98-face), inset -2px -2px var(--win98-shadow), inset 2px 2px var(--win98-highlight);
+}
+
+/* Keep the page width steady as filters add or remove the vertical scrollbar. */
+html {
+  scrollbar-gutter: stable;
+}
+
+html,
+body,
+#q-app,
+.q-layout,
+.q-page-container,
+.nicegui-content {
+  background: var(--win98-surface) !important;
+}
+
+body,
+button,
+input,
+label,
+legend,
+option,
+select,
+table,
+textarea,
+.q-card,
+.q-btn,
+.q-field,
+.q-chip,
+.q-badge,
+.q-item,
+.q-notification,
+.q-tooltip {
+  font-family: "Expedite Tahoma", Tahoma, "Microsoft Sans Serif", Arial, sans-serif !important;
+  -webkit-font-smoothing: auto;
+}
+
+.nicegui-content {
+  padding: 0 !important;
+}
+
+.q-page-container {
+  background: var(--win98-surface);
+}
+
+.app-page {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 16px !important;
+  gap: 16px !important;
+  color: #222;
+  background: var(--win98-surface);
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.app-menu-bar {
+  width: calc(100% + 32px) !important;
+  min-height: 28px;
+  margin: -16px -16px 0 !important;
+  padding: 2px 6px;
+  background: var(--win98-surface);
+  box-shadow: inset 0 -1px var(--win98-shadow), inset 0 -2px var(--win98-highlight);
+}
+
+.app-menu-bar .q-btn,
+.app-menu-bar .q-btn-dropdown {
+  min-width: 0 !important;
+  min-height: 23px !important;
+  padding: 0 8px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app-menu-bar .q-btn:hover,
+.app-menu-bar .q-btn-dropdown:hover {
+  box-shadow: var(--win98-raised) !important;
+}
+
+.app-menu-bar .q-btn-dropdown__arrow {
+  display: none !important;
+}
+
+.app-status-bar {
+  width: 100% !important;
+  min-height: 24px;
+  margin: 0 !important;
+  padding: 3px 4px;
+  color: #222;
+  background: var(--win98-surface);
+  box-shadow: inset 0 1px var(--win98-highlight);
+  box-sizing: border-box;
+}
+
+.app-status-bar .status-bar-field {
+  min-width: 140px;
+  padding: 3px 6px;
+  overflow: hidden;
+  box-shadow: inset -1px -1px var(--win98-highlight), inset 1px 1px var(--win98-shadow);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-status-bar .status-bar-field:last-child:not(:first-child) {
+  width: 220px;
+  flex-grow: 0;
+}
+
+.app-page-header {
+  min-height: 42px;
+  gap: 8px 12px;
+  padding: 0 0 10px !important;
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(to bottom, var(--win98-shadow) 0 50%, var(--win98-highlight) 50% 100%) 2;
+}
+
+.app-page-title {
+  color: #111 !important;
+  font-family: "Expedite Tahoma", Tahoma, "Microsoft Sans Serif", Arial, sans-serif !important;
+  font-size: 24px !important;
+  min-width: 0;
+  font-weight: 600 !important;
+  line-height: 30px !important;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.classic-group {
+  min-width: 0;
+  padding: 14px 16px 16px;
+  background: var(--win98-surface);
+  border-width: 2px;
+  border-style: groove;
+  border-color: transparent;
+}
+
+.classic-group-legend {
+  padding: 0 5px;
+  background: var(--win98-surface);
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.classic-group-legend .q-label,
+.classic-group-legend > div {
+  display: inline;
+}
+
+.classic-field {
+  min-width: 0;
+}
+
+.intake-customer-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.classic-field-label {
+  color: #222;
+  font-size: 12px;
+}
+
+.classic-field .q-input:not(.q-textarea) .q-field__control,
+.classic-field .q-select .q-field__control {
+  height: 34px;
+  min-height: 34px;
+}
+
+.classic-field .q-input:not(.q-textarea) .q-field__marginal,
+.classic-field .q-select .q-field__marginal {
+  height: 34px;
+}
+
+.classic-field .q-textarea .q-field__control {
+  min-height: 70px;
+}
+
+.classic-number-control,
+.classic-spin-control {
+  height: 44px;
+}
+
+.classic-number-input .q-field__control,
+.classic-number-input .q-field__marginal {
+  height: 44px;
+  min-height: 44px;
+}
+
+.classic-spin-control {
+  width: 34px;
+  min-width: 34px;
+}
+
+.classic-spin-control button.q-btn.classic-spin-button {
+  width: 34px;
+  min-width: 34px;
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0;
+  font-family: Arial, sans-serif !important;
+  font-size: 8px !important;
+  line-height: 8px;
+}
+
+.classic-number-input input[type="number"] {
+  appearance: textfield;
+}
+
+.classic-number-input input[type="number"]::-webkit-inner-spin-button,
+.classic-number-input input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.classic-quick-add-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+button.q-btn.classic-quick-add-button {
+  min-height: 30px;
+  padding: 0 7px;
+  font-size: 12px !important;
+  text-align: left;
+}
+
+button.q-btn.order-submit-button {
+  min-width: 240px;
+  min-height: 48px;
+  padding: 0 20px;
+  font-size: 15px !important;
+}
+
+.order-submit-button .q-btn__content {
+  gap: 10px;
+}
+
+button.q-btn.order-submit-button .q-icon {
+  font-size: 20px;
+}
+
+.classic-quick-add-button .q-btn__content {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.classic-quick-add-button .button-label {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classic-list-toolbar {
+  min-height: 34px;
+  padding: 2px 0 5px;
+  background: var(--win98-surface);
+}
+
+.classic-toolbar-separator {
+  width: 2px;
+  height: 24px;
+  margin: 0 5px;
+  background: linear-gradient(to right, var(--win98-shadow) 0 1px, var(--win98-highlight) 1px 2px);
+}
+
+.classic-list-panel {
+  width: 100%;
+  min-width: 0;
+  max-height: min(60vh, 560px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: white;
+  box-shadow: var(--win98-sunken);
+}
+
+/* List pages use the page as their only scroll container. */
+.catalog-page,
+.event-details-page,
+.events-page,
+.orders-page {
+  overflow-x: visible;
+}
+
+.page-scroll-list {
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+}
+
+/* Keep keyboard-selected rows clear of the sticky header and fixed footer. */
+.page-scroll-list .classic-list-row {
+  scroll-margin-top: 36px;
+  scroll-margin-bottom: 40px;
+}
+
+.classic-list {
+  width: 100%;
+  min-width: 640px;
+  table-layout: fixed;
+  background: white;
+}
+
+.classic-list:focus {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+.classic-list th {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  height: 28px;
+  padding: 3px;
+  overflow: hidden;
+  background: var(--win98-surface);
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+
+button.q-btn.classic-sort-header {
+  min-width: 0;
+  min-height: 22px;
+  padding: 0 5px;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 12px !important;
+}
+
+button.q-btn.classic-sort-header:active {
+  box-shadow: none !important;
+  transform: none;
+}
+
+.classic-sort-header .q-btn__content {
+  min-width: 0;
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classic-list td {
+  height: 34px;
+  padding: 5px 8px;
+  overflow: hidden;
+  border-bottom: 1px solid #d0d0d0;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.classic-list-row {
+  cursor: default;
+  user-select: none;
+}
+
+.classic-list tbody .classic-list-row:hover td {
+  background: var(--win98-face);
+}
+
+.classic-list tbody .classic-list-row.is-selected td,
+.classic-list tbody .classic-list-row.is-selected:hover td {
+  color: white !important;
+  background: var(--win98-blue) !important;
+}
+
+.classic-list tbody .classic-list-row.is-inactive:not(.is-selected) td {
+  color: #777;
+  background: #e5e5e5;
+}
+
+.classic-list-row.is-selected .q-label {
+  color: white !important;
+}
+
+.classic-favorite-button {
+  font-family: Arial, sans-serif !important;
+  font-size: 16px !important;
+  font-weight: normal !important;
+  text-align: center;
+}
+
+.classic-list .classic-actions {
+  overflow: visible;
+  white-space: nowrap;
+}
+
+.event-list {
+  min-width: 500px;
+}
+
+.catalog-list {
+  min-width: 640px;
+}
+
+.order-list {
+  min-width: 900px;
+}
+
+.management-price-list {
+  min-width: 600px;
+}
+
+.catalog-picker-panel {
+  height: min(42vh, 340px);
+  max-height: none;
+}
+
+.catalog-picker-list {
+  min-width: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.catalog-picker-list thead {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  background: var(--win98-surface);
+}
+
+.catalog-picker-list th {
+  position: static;
+}
+
+.catalog-picker-list .classic-list-row {
+  scroll-margin-top: 36px;
+  scroll-margin-bottom: 4px;
+}
+
+.catalog-picker-list td {
+  height: 48px;
+}
+
+.management-price-list td {
+  height: 48px;
+}
+
+.management-price-list .management-price-row.has-override td {
+  background: #ffffe1;
+}
+
+.management-price-list .management-price-row.is-inactive td {
+  color: #777;
+}
+
+.management-price-list .management-price-row.is-inactive:not(.has-override) td {
+  background: #e5e5e5;
+}
+
+.management-price-list .management-price-row.is-inactive .q-field__native,
+.management-price-list .management-price-row.is-inactive .q-field__prefix {
+  color: #777 !important;
+}
+
+.catalog-item-description {
+  overflow: hidden;
+  color: #555;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.management-price-input .q-field__control,
+.management-price-input .q-field__marginal {
+  height: 32px;
+  min-height: 32px;
+}
+
+.event-page-content {
+  min-width: 0;
+  padding: 12px;
+  background: var(--win98-surface);
+  box-shadow: var(--win98-raised);
+}
+
+.event-tabs {
+  z-index: 1;
+  min-height: 34px;
+  margin-top: -8px;
+  margin-bottom: -16px;
+  padding: 3px 4px 0;
+  background: transparent;
+}
+
+.event-tabs .q-tabs__content {
+  align-items: flex-end;
+  justify-content: flex-start;
+  overflow: visible;
+}
+
+.event-tabs .q-tab {
+  min-width: 110px;
+  min-height: 30px;
+  padding: 0 14px;
+  color: #222 !important;
+  background: var(--win98-face);
+  border-radius: 3px 3px 0 0 !important;
+  box-shadow: inset -1px 0 var(--win98-frame), inset 1px 1px var(--win98-face), inset -2px 0 var(--win98-shadow), inset 2px 2px var(--win98-highlight);
+  font-family: "Expedite Tahoma", Tahoma, "Microsoft Sans Serif", Arial, sans-serif !important;
+  font-size: 13px;
+  text-transform: none;
+}
+
+.event-tabs .q-tab--active {
+  z-index: 2;
+  min-height: 32px;
+  margin-bottom: -2px;
+  background: var(--win98-surface);
+  box-shadow: inset 1px 1px var(--win98-highlight), inset -1px 0 var(--win98-frame), inset 2px 2px var(--win98-face), inset -2px 0 var(--win98-shadow);
+  font-weight: bold;
+}
+
+.event-tabs .q-tab__indicator,
+.event-tabs .q-focus-helper {
+  display: none !important;
+}
+
+.q-card {
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+}
+
+.q-card.bg-amber-50 {
+  background: #ffffe1 !important;
+}
+
+.q-card.bg-gray-50,
+.bg-blue-50 {
+  background: var(--win98-face) !important;
+}
+
+button.q-btn {
+  min-width: 75px;
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 13px !important;
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+  text-shadow: none !important;
+  text-transform: none !important;
+}
+
+button.q-btn:not(:disabled):active {
+  box-shadow: var(--win98-sunken) !important;
+  transform: translate(1px, 1px);
+}
+
+/* Like a classic formatting toolbar: flat icon choices, with the active one pressed in. */
+.pricing-filter button.q-btn {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.pricing-filter button.q-btn[aria-pressed="false"]:hover {
+  box-shadow: var(--win98-raised) !important;
+}
+
+button.q-btn:focus-visible {
+  outline: 1px dotted #000 !important;
+  outline-offset: -4px;
+}
+
+button.q-btn.q-btn--round {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 0 !important;
+}
+
+button.q-btn.q-btn--dense:not(.q-btn--round) {
+  min-height: 27px;
+}
+
+.q-btn::before,
+.q-btn .q-focus-helper {
+  display: none !important;
+}
+
+.q-btn .q-icon {
+  color: #222;
+  font-size: 17px;
+}
+
+.q-btn.text-negative .q-icon {
+  color: #800000;
+}
+
+.q-field--outlined .q-field__control {
+  color: #222 !important;
+  background: white !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-sunken) !important;
+}
+
+.q-field--outlined .q-field__control::before,
+.q-field--outlined .q-field__control::after {
+  border: 0 !important;
+}
+
+.q-field--focused .q-field__control {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+.q-field input,
+.q-field textarea,
+.q-field select {
+  height: auto !important;
+  padding: 0 !important;
+  color: #222 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: "Expedite Tahoma", Tahoma, "Microsoft Sans Serif", Arial, sans-serif !important;
+  font-size: 13px !important;
+  line-height: normal !important;
+}
+
+.q-field__label,
+.q-field__prefix,
+.q-field__suffix,
+.q-field__prepend,
+.q-field__append {
+  color: #222 !important;
+  font-size: 12px !important;
+}
+
+.q-field--disabled .q-field__control,
+.q-field--readonly .q-field__control {
+  background: var(--win98-surface) !important;
+}
+
+.q-checkbox__bg {
+  color: #222 !important;
+  background: white;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-sunken);
+}
+
+.q-checkbox[aria-checked="true"] .q-checkbox__bg {
+  color: white !important;
+  background: var(--win98-blue) !important;
+}
+
+.q-chip {
+  min-height: 30px;
+  font-size: 13px;
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+}
+
+.q-chip:active {
+  box-shadow: var(--win98-sunken) !important;
+}
+
+.q-badge {
+  color: #222 !important;
+  background: var(--win98-face) !important;
+  border: 1px solid var(--win98-shadow);
+  border-radius: 0 !important;
+}
+
+.q-separator {
+  height: 2px !important;
+  background: linear-gradient(var(--win98-shadow) 0 1px, var(--win98-highlight) 1px 2px) !important;
+}
+
+.border,
+.border-b {
+  border-color: var(--win98-shadow) !important;
+}
+
+.q-dialog__backdrop {
+  background: rgba(0, 0, 0, 0.35) !important;
+}
+
+.q-dialog__inner > .q-card {
+  border: 0 !important;
+  box-shadow: var(--win98-window) !important;
+}
+
+.classic-dialog {
+  max-height: calc(100vh - 32px);
+  padding: 3px !important;
+  gap: 0 !important;
+  overflow: hidden;
+}
+
+.classic-dialog-title {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.classic-dialog-body {
+  padding: 14px 12px;
+  gap: 12px !important;
+  overflow: auto;
+}
+
+.classic-dialog-actions {
+  padding: 10px 8px 7px;
+}
+
+.classic-about-name {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.classic-logo-preview {
+  height: 112px;
+  min-height: 112px;
+  padding: 8px;
+  overflow: hidden;
+  background: white;
+  box-shadow: var(--win98-sunken);
+}
+
+.classic-logo-preview .q-img {
+  width: 100%;
+  height: 96px;
+}
+
+button.q-btn.classic-default-button {
+  box-shadow: inset -2px -2px var(--win98-frame), inset 1px 1px var(--win98-frame), inset 2px 2px var(--win98-highlight), inset -3px -3px var(--win98-shadow), inset 3px 3px var(--win98-face) !important;
+}
+
+.q-menu {
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-window) !important;
+}
+
+.q-item {
+  min-height: 24px;
+  color: #222 !important;
+}
+
+.q-item.q-manual-focusable--focused,
+.q-item--active,
+.q-item:hover {
+  color: white !important;
+  background: var(--win98-blue) !important;
+}
+
+.q-uploader {
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+}
+
+.q-uploader__header {
+  color: white !important;
+  background: linear-gradient(90deg, var(--win98-blue), var(--win98-blue-light)) !important;
+  border-radius: 0 !important;
+}
+
+.classic-logo-upload {
+  width: 90px;
+  min-width: 90px;
+  height: 30px;
+  max-height: 30px;
+  overflow: hidden;
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+}
+
+.classic-logo-upload:has(.q-btn:active) {
+  box-shadow: var(--win98-sunken) !important;
+  transform: translate(1px, 1px);
+}
+
+.classic-logo-upload:has(.q-btn:focus-visible) {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+.classic-logo-upload .q-uploader__header {
+  position: relative;
+  min-height: 30px;
+  padding: 0 12px;
+  color: #222 !important;
+  background: transparent !important;
+}
+
+.classic-logo-upload .q-uploader__title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.classic-logo-upload .q-uploader__subtitle,
+.classic-logo-upload .q-icon {
+  display: none;
+}
+
+.classic-logo-upload .q-uploader__header .q-btn {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.classic-logo-upload .q-uploader__list {
+  display: none;
+}
+
+.q-notification {
+  color: #222 !important;
+  background: var(--win98-surface) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--win98-window) !important;
+}
+
+.q-notification__icon {
+  color: var(--win98-blue) !important;
+}
+
+.q-tooltip {
+  max-width: 320px;
+  padding: 3px 5px !important;
+  color: #222 !important;
+  background: #ffffe1 !important;
+  border: 1px solid #000;
+  border-radius: 0 !important;
+  box-shadow: 1px 1px var(--win98-shadow);
+  font-size: 12px !important;
+}
+
+a,
+.q-link,
+a.text-primary {
+  color: #0000ff !important;
+  text-decoration: underline !important;
+}
+
+.text-primary {
+  color: #000080 !important;
+}
+
+.text-gray-400,
+.text-gray-500,
+.text-gray-600 {
+  color: #555 !important;
+}
+
+.q-toggle__track {
+  border-radius: 0 !important;
+}
+
+.q-toggle__thumb::after {
+  border-radius: 0 !important;
+  box-shadow: var(--win98-raised) !important;
+}
+
+img.rounded {
+  border-radius: 0 !important;
+  box-shadow: var(--win98-sunken);
+}
+
+/* NiceGUI places Quasar's color utilities in an !important cascade layer.
+   Overrides in the first-declared theme layer keep classic controls legible. */
+@layer theme {
+  button.q-btn {
+    color: #222 !important;
+    background: var(--win98-surface) !important;
+  }
+
+  button.q-btn.bg-primary {
+    box-shadow: inset -2px -2px var(--win98-frame), inset 1px 1px var(--win98-frame), inset 2px 2px var(--win98-highlight), inset -3px -3px var(--win98-shadow), inset 3px 3px var(--win98-face) !important;
+  }
+
+  .pricing-filter button.q-btn[aria-pressed="true"] {
+    box-shadow: var(--win98-sunken) !important;
+  }
+
+  button.q-btn .q-icon,
+  .q-chip,
+  .event-tabs .q-tab {
+    color: #222 !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  .classic-quick-add-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .classic-quick-add-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .app-page {
+    padding: 8px !important;
+  }
+
+  .app-menu-bar {
+    width: calc(100% + 16px) !important;
+    margin-top: -8px !important;
+    margin-right: -8px !important;
+    margin-left: -8px !important;
+  }
+
+  .app-status-bar {
+    flex-wrap: nowrap;
+  }
+
+  .app-status-bar .status-bar-field {
+    min-width: 0;
+  }
+
+  .app-status-bar .status-bar-field:last-child:not(:first-child) {
+    width: 42%;
+    min-width: 0;
+  }
+
+  .classic-group {
+    padding: 12px;
+  }
+
+  .classic-list-toolbar {
+    gap: 4px !important;
+    row-gap: 4px !important;
+  }
+
+  .event-tabs {
+    overflow-x: auto;
+  }
+
+  .event-tabs .q-tabs__content {
+    min-width: max-content;
+  }
+
+  .event-tabs .q-tab {
+    min-width: 92px;
+    padding: 0 8px;
+  }
+
+  .classic-dialog-body {
+    padding: 10px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .classic-quick-add-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  button.q-btn.order-submit-button {
+    min-width: 150px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .classic-file-row {
+    flex-wrap: wrap !important;
+  }
+
+  .classic-file-row .q-field {
+    flex-basis: 100%;
+  }
+}

@@ -219,6 +219,38 @@ def test_catalog_favorites_are_limited_and_inactive_items_are_removed() -> None:
     assert list_catalog_favorite_ids() == [*favorite_ids[1:], eleventh_id]
 
 
+def test_catalog_item_and_favorite_are_saved_atomically() -> None:
+    for index in range(10):
+        save_catalog_item(
+            item_id=None,
+            name=f"Favorite {index}",
+            description=None,
+            base_price_cents=100,
+            active=True,
+            favorite=True,
+        )
+    item = save_catalog_item(
+        item_id=None,
+        name="Original name",
+        description=None,
+        base_price_cents=200,
+        active=True,
+    )
+
+    with pytest.raises(ValueError, match="No more than 10"):
+        save_catalog_item(
+            item_id=item.id,
+            name="Unsaved name",
+            description=None,
+            base_price_cents=200,
+            active=True,
+            favorite=True,
+        )
+
+    saved_item = next(saved for saved in list_catalog_items() if saved.id == item.id)
+    assert saved_item.name == "Original name"
+
+
 def test_event_catalog_prices_can_be_set_and_cleared(tmp_path: Path) -> None:
     event = _event(tmp_path)
     save_event(event)

@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 import time
+from multiprocessing import freeze_support
 from pathlib import Path
 from typing import Protocol, cast
 
@@ -142,4 +143,5 @@ def main() -> None:
 
 
 if __name__ in {"__main__", "__mp_main__"}:
+    freeze_support()
     main()

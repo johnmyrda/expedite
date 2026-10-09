@@ -51,8 +51,8 @@ Live browser checks require Chrome or Chromium and manage their own disposable d
 uv run python scripts/live_ui_harness.py
 ```
 
-Set `CHROME_PATH` if needed. See [LIVE_TESTING.md](LIVE_TESTING.md) for harness options and
-browser/native testing guidance.
+Set `CHROME_PATH` if needed; use `--help` for harness options. Reserve native-app checks for
+window behavior and OS integration, and clean up the full process tree afterward.
 
 ## Build
 

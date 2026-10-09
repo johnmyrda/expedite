@@ -61,7 +61,7 @@ exe = EXE(
     upx=False,
     console=False,
     disable_windowed_traceback=False,
-    icon=None,
+    icon=str(project_root / "build" / "icons" / "expedite.ico"),
 )
 
 collection = COLLECT(

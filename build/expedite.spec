@@ -69,7 +69,7 @@ collection = COLLECT(
 app = BUNDLE(
     collection,
     name="Expedite.app",
-    icon=None,
+    icon=str(project_root / "build" / "icons" / "expedite.icns"),
     bundle_identifier="com.johnmyrda.expedite",
     info_plist={
         "CFBundleName": "Expedite",

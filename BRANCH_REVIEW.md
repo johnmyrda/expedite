@@ -116,6 +116,16 @@ instead of crashing receipt settings or generation. Regression tests exercise pe
 values and verify that a valid replacement can still be saved. README settings navigation and
 scope now match the application.
 
+Application icons are wired into both PyInstaller specs (`build/icons/expedite.ico` and
+`build/icons/expedite.icns`). The local macOS bundle built successfully and its packaged icon
+matches the source asset. An x64 Windows build on the ARM64 Windows 11 VM passed Ruff, ty,
+and pytest (50 passed, 1 skipped). Native startup reached interactive readiness in 10.83 seconds.
+A headless Edge client against that packaged native app created an event and a $12.50 order;
+SQLite persistence, the 576-pixel receipt PNG, and embedded executable icon resources were
+verified. File > Exit terminated the native application with exit code 0 and no remaining
+application processes. Temporary VM data, build tools, browser processes, and scheduled tasks
+were removed. This check did not exercise the installer or physical printing.
+
 No remaining merge-blocking theme issue was identified. The enhancements below remain out of
 scope for this branch. Before publishing a release:
 

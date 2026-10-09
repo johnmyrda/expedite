@@ -10,6 +10,9 @@ project_root = Path(SPECPATH).parent
 
 nicegui_datas = collect_data_files("nicegui")
 webview_datas = collect_data_files("webview")
+expedite_static_datas = [
+    (str(project_root / "src" / "expedite" / "static"), "expedite/static"),
+]
 
 nicegui_hidden_imports = collect_submodules(
     "nicegui",
@@ -24,7 +27,7 @@ a = Analysis(
     [str(project_root / "src" / "expedite" / "main.py")],
     pathex=[str(project_root / "src")],
     binaries=[],
-    datas=nicegui_datas + webview_datas,
+    datas=nicegui_datas + webview_datas + expedite_static_datas,
     hiddenimports=nicegui_hidden_imports + webview_hidden_imports,
     hookspath=[],
     hooksconfig={},
@@ -66,7 +69,7 @@ collection = COLLECT(
 app = BUNDLE(
     collection,
     name="Expedite.app",
-    icon=None,
+    icon=str(project_root / "build" / "icons" / "expedite.icns"),
     bundle_identifier="com.johnmyrda.expedite",
     info_plist={
         "CFBundleName": "Expedite",

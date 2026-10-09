@@ -16,10 +16,13 @@ dist/
 build/pyinstaller/
 
 # Local editor and OS files
+.air/
 .idea/
 .run/
 .DS_Store
 
 # Local Files for Context
+BRANCH_REVIEW.md
+LIVE_TESTING.md
 DEV_LOG.md
 EVENT_INTAKE.md

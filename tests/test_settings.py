@@ -5,7 +5,11 @@ import pytest
 from PIL import Image
 
 from expedite.config import DEFAULT_LABEL_NOTES_HEIGHT_MM, LABEL_DPI
+from expedite.models import AppSetting
+from expedite.storage.database import dispose_engine, transaction
+from expedite.storage.repositories import AppSettingRepository
 from expedite.storage.settings import (
+    LABEL_NOTES_HEIGHT_KEY,
     label_notes_height_mm,
     label_notes_height_px,
     receipt_settings,
@@ -26,6 +30,27 @@ def test_receipt_notes_height_defaults_and_persists(
 
     assert label_notes_height_mm() == 75
     assert label_notes_height_px() == round(75 * LABEL_DPI / 25.4)
+
+
+@pytest.mark.parametrize("value", ["inf", "-inf", "1e999", "nan", "invalid", "-1", "201"])
+def test_receipt_notes_height_recovers_from_invalid_persisted_values(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    monkeypatch.setenv("EVENT_INTAKE_DATA_DIR", str(tmp_path))
+    dispose_engine()
+    try:
+        with transaction() as session:
+            AppSettingRepository(session).save(AppSetting(key=LABEL_NOTES_HEIGHT_KEY, value=value))
+
+        assert receipt_settings().notes_height_mm == DEFAULT_LABEL_NOTES_HEIGHT_MM
+        assert label_notes_height_px() == round(DEFAULT_LABEL_NOTES_HEIGHT_MM * LABEL_DPI / 25.4)
+
+        save_label_notes_height_mm(75)
+        assert label_notes_height_mm() == 75
+    finally:
+        dispose_engine()
 
 
 def test_receipt_branding_persists_in_database(

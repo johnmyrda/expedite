@@ -5,6 +5,7 @@
 #define AppName "Expedite"
 #define AppPublisher "John Myrda"
 #define AppExecutable "Expedite.exe"
+#define AppIcon "expedite.ico"
 #define SourceDirectory "..\..\dist\Expedite"
 
 [Setup]
@@ -22,15 +23,16 @@ OutputBaseFilename=Expedite-{#AppVersion}-Windows-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
-UninstallDisplayIcon={app}\{#AppExecutable}
+UninstallDisplayIcon={app}\{#AppIcon}
 CloseApplications=yes
 
 [Files]
 Source: "{#SourceDirectory}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\icons\{#AppIcon}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExecutable}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExecutable}"; Tasks: desktopicon
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExecutable}"; IconFilename: "{app}\{#AppIcon}"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExecutable}"; IconFilename: "{app}\{#AppIcon}"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked

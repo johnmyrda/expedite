@@ -100,6 +100,33 @@ Recent validation: `uv run ruff check .`, `uv run ty check`, `uv run pytest -q`
 (34 passed, 1 skipped), `git diff --check`, and the live UI harness pass. Native appearance
 and interactions were reviewed manually during the fit-and-finish iterations.
 
+## Branch closeout validation
+
+The final closeout pass recovered the previous session's release checklist and confirmed that
+PR #8's latest Windows build and installed-app startup smoke test passed. Local validation:
+
+- `uv run ruff check .` and `uv run ty check` passed.
+- `uv run pytest -q` passed (50 passed, 1 opt-in live test skipped).
+- `uv run python scripts/live_ui_harness.py` passed startup, duplicate-submit, print-lock,
+  and price-save/refresh race checks using disposable data.
+- `git diff --check` passed.
+
+Malformed persisted receipt notes heights (including infinity) now fall back to the default
+instead of crashing receipt settings or generation. Regression tests exercise persisted invalid
+values and verify that a valid replacement can still be saved. README settings navigation and
+scope now match the application.
+
+No remaining merge-blocking theme issue was identified. The enhancements below remain out of
+scope for this branch. Before publishing a release:
+
+- The project version is now `0.1.0`; publish with the matching release tag `v0.1.0` from the
+  intended merged commit.
+- Test the final Windows installer with disposable data through intake, receipt generation,
+  reprinting where hardware is available, File > Exit, and uninstall. The CI startup smoke test
+  and browser harness do not replace this end-to-end native check.
+- Keep the known extreme-value money formatting/parsing edge case as a separate follow-up;
+  this pass does not change monetary limits or validation rules.
+
 ## Deferred work
 
 - Consider field-attached, lazy validation for Catalog base price and Event Management price

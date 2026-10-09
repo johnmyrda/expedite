@@ -40,7 +40,7 @@ def _notes_height(setting: AppSetting | None) -> int:
         return DEFAULT_LABEL_NOTES_HEIGHT_MM
     try:
         value = round(float(setting.value))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return DEFAULT_LABEL_NOTES_HEIGHT_MM
     if not 0 <= value <= MAX_LABEL_NOTES_HEIGHT_MM:
         return DEFAULT_LABEL_NOTES_HEIGHT_MM

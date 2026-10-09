@@ -59,8 +59,9 @@ printer name, set a persistent user environment variable and restart Expedite:
 
 Automatic printing is currently Windows-only. The printer must support ESC/POS raster commands.
 Receipts leave zero-dollar Cost values blank, include an empty Paid checkbox, and provide a blank
-Notes area. The Notes area defaults to 60 mm. Use the settings button on the Events page to change
-its height from 0 to 200 mm, customize the receipt name, and upload or remove a PNG logo up to 5 MB.
+Notes area. The Notes area defaults to 60 mm. Use **Tools > Receipt Settings...** on any page to
+change its height from 0 to 200 mm, customize the receipt name, and upload or remove a PNG logo
+up to 5 MB.
 Logos are scaled to fit the receipt while preserving their aspect ratio. These application-wide
 branding settings are stored in SQLite, travel with database backups, and apply to newly generated
 receipts.
@@ -177,11 +178,12 @@ jobs:
 
 The release workflow intentionally supports manual dispatch only.
 
-## v1 Scope
+## Current scope
 
-- Fixed fields: Name, Phone, Work Request, Cost
-- Non-blocking validation warnings
+- Event intake with customer name, phone, and editable order line items
+- Catalog favorites and per-event price overrides
+- Non-blocking customer-field validation warnings
 - Sequential per-event order IDs
-- Stores event and order data in the application SQLite database
-- Saves Rongta RP332-targeted thermal receipt-label PNGs under each event's `labels/` folder
-- No in-app printing or automated cross-platform build workflow
+- SQLite storage for events, catalog, pricing, orders, and receipt settings
+- Rongta RP332-targeted thermal receipt-label PNGs under each event's `labels/` folder
+- Windows ESC/POS printing and automated Windows installer builds

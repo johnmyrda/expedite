@@ -16,6 +16,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, BinaryIO
@@ -56,20 +57,23 @@ class CdpPage:
     """Small synchronous Chrome DevTools Protocol client for one page."""
 
     def __init__(self, websocket_url: str) -> None:
-        self._connection: ClientConnection = connect(
-            websocket_url,
-            open_timeout=10,
-            max_size=None,
-        )
-        self._next_id = 0
-        self.console_messages: list[str] = []
-        self.command("Runtime.enable")
-        self.command("Log.enable")
-        self.command("Network.enable")
-        self.command("Network.setCacheDisabled", {"cacheDisabled": True})
+        self._connection_stack = ExitStack()
+        try:
+            self._connection: ClientConnection = self._connection_stack.enter_context(
+                connect(websocket_url, open_timeout=10, max_size=None)
+            )
+            self._next_id = 0
+            self.console_messages: list[str] = []
+            self.command("Runtime.enable")
+            self.command("Log.enable")
+            self.command("Network.enable")
+            self.command("Network.setCacheDisabled", {"cacheDisabled": True})
+        except Exception:
+            self.close()
+            raise
 
     def close(self) -> None:
-        self._connection.close()
+        self._connection_stack.close()
 
     def command(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         self._next_id += 1

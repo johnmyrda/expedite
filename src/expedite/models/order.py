@@ -2,19 +2,16 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, Optional
+from typing import Annotated
 
 from pydantic import BeforeValidator, StringConstraints
 from sqlalchemy import CheckConstraint, Column, Integer, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
+from expedite.models.catalog_item import CatalogItem
 from expedite.models.event import Event, EventRecord
 from expedite.models.phone import normalize_phone
 from expedite.money import parse_money_amount
-
-if TYPE_CHECKING:
-    from expedite.models.catalog_item import CatalogItem
-
 
 """Custom validation-message metadata."""
 
@@ -76,7 +73,7 @@ class OrderRecord(OrderBase, table=True):
     )
     order_id: int = Field(sa_column=Column("order_number", Integer, nullable=False))
     event: EventRecord | None = Relationship(back_populates="orders")
-    line_items: list["OrderLineRecord"] = Relationship(
+    line_items: list[OrderLineRecord] = Relationship(
         back_populates="order",
         cascade_delete=True,
     )
@@ -105,4 +102,4 @@ class OrderLineRecord(OrderLine, table=True):
         ondelete="SET NULL",
     )
     order: OrderRecord | None = Relationship(back_populates="line_items")
-    catalog_item: Optional["CatalogItem"] = Relationship(back_populates="order_lines")
+    catalog_item: CatalogItem | None = Relationship(back_populates="order_lines")

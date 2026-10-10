@@ -1,13 +1,9 @@
 """Generic SQLModel repository operations."""
 
-from typing import Generic, TypeVar
-
 from sqlmodel import Session, SQLModel
 
-ModelT = TypeVar("ModelT", bound=SQLModel)
 
-
-class Repository(Generic[ModelT]):
+class Repository[ModelT: SQLModel]:
     def __init__(self, session: Session, model: type[ModelT]) -> None:
         self.session = session
         self.model = model

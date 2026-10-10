@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Expedite is an offline-first desktop application for event order intake. It uses Python 3.11+, NiceGUI in native mode, SQLModel/SQLite for persistence, Pillow for receipt images, and PyInstaller for distribution. Windows is the primary deployment target, while development commonly happens on macOS.
+Expedite is an offline-first desktop application for event order intake. It uses Python 3.15+, NiceGUI in native mode, SQLModel/SQLite for persistence, Pillow for receipt images, and PyInstaller for distribution. Windows is the primary deployment target, while development commonly happens on macOS.
 
 Treat `README.md`, `DEVELOPMENT.md`, the implementation, and the tests as the current source of truth. `EVENT_INTAKE.md` is an early product specification and contains superseded details, including the original label size and printing scope.
 

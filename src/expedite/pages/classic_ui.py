@@ -1,9 +1,8 @@
 """Reusable Windows-classic presentation components."""
 
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import TypeVar
 
 from nicegui import ui
 from nicegui.element import Element
@@ -15,11 +14,9 @@ from nicegui.elements.number import Number
 from nicegui.elements.select import Select
 from nicegui.elements.textarea import Textarea
 
-ListRowKey = TypeVar("ListRowKey")
-
 
 @contextmanager
-def group_box(title: str) -> Iterator[None]:
+def group_box(title: str) -> Generator[None]:
     """Render a classic labeled group box."""
     with ui.element("fieldset").classes("classic-group w-full"):
         with ui.element("legend").classes("classic-group-legend"):
@@ -28,7 +25,7 @@ def group_box(title: str) -> Iterator[None]:
 
 
 @contextmanager
-def labeled_field(label: str, *, classes: str = "w-full") -> Iterator[None]:
+def labeled_field(label: str, *, classes: str = "w-full") -> Generator[None]:
     """Render an explicit label above a form control."""
     with ui.column().classes(f"classic-field gap-1 {classes}"):
         ui.label(label).classes("classic-field-label")
@@ -55,7 +52,7 @@ def sortable_header(
     )
 
 
-def adjacent_list_value(
+def adjacent_list_value[ListRowKey](
     values: Sequence[ListRowKey],
     selected: ListRowKey | None,
     offset: int,
@@ -74,7 +71,7 @@ def adjacent_list_value(
     return values[next_index]
 
 
-def update_list_row_selection(
+def update_list_row_selection[ListRowKey](
     list_element: Element,
     row_elements: Mapping[ListRowKey, Element],
     *,
@@ -139,7 +136,7 @@ def classic_dialog(
     width: str = "520px",
     submit_on_enter: bool = True,
     footer_text: str | None = None,
-) -> Iterator[ClassicDialog]:
+) -> Generator[ClassicDialog]:
     """Render a classic modal with standard actions and optional Enter submission."""
     dialog = ui.dialog()
     controller = ClassicDialog(dialog)

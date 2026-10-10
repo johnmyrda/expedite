@@ -1,7 +1,5 @@
 """Non-blocking intake-field validation messages."""
 
-from typing import Annotated
-
 from pydantic import TypeAdapter, ValidationError
 
 from expedite.models import Message, Order
@@ -9,7 +7,7 @@ from expedite.models import Message, Order
 
 def _field_adapter(field_name: str) -> TypeAdapter[object]:
     field = Order.model_fields[field_name]
-    return TypeAdapter(Annotated[field.annotation, *field.metadata])
+    return TypeAdapter(field.rebuild_annotation())
 
 
 def _field_message(field_name: str) -> str | None:

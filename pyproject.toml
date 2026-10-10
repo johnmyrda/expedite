@@ -6,21 +6,21 @@ readme = "README.md"
 authors = [
     { name = "John Myrda", email = "hello@johnmyrda.com" }
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.15"
 dependencies = [
-    "nicegui[native]>=3.16.0",
-    "phonenumbers==9.0.38",
+    "nicegui[native]==3.18.0",
+    "phonenumbers==9.0.41",
     "pillow>=12.3.0",
-    "pydantic==2.13.5",
+    "pydantic==2.14.0",
     "pywin32>=311 ; sys_platform == 'win32'",
-    "sqlmodel==0.0.42",
+    "sqlmodel==0.0.48",
 ]
 
 [project.scripts]
 expedite = "expedite.main:main"
 
 [build-system]
-requires = ["uv_build>=0.12.3,<0.13.0"]
+requires = ["uv_build>=0.13.0,<0.14.0"]
 build-backend = "uv_build"
 
 [tool.pytest.ini_options]
@@ -50,9 +50,9 @@ build/expedite-windows.spec
 
 [dependency-groups]
 dev = [
-    "poethepoet>=0.48.0",
-    "pyinstaller==6.22.2",
+    "poethepoet==0.48.0",
+    "pyinstaller==6.22.3",
     "pytest>=9.1.1",
-    "ruff==0.16.5",
-    "ty==0.0.75",
+    "ruff==0.17.0",
+    "ty==0.0.86",
 ]

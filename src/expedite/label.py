@@ -4,7 +4,6 @@ import os
 import sys
 from io import BytesIO
 from pathlib import Path
-from typing import TypeAlias
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
@@ -13,7 +12,7 @@ from expedite.models import Order
 from expedite.money import parse_money_amount
 from expedite.storage.settings import receipt_settings
 
-LabelFont: TypeAlias = ImageFont.ImageFont | ImageFont.FreeTypeFont
+type LabelFont = ImageFont.ImageFont | ImageFont.FreeTypeFont
 
 
 def _font_paths(bold: bool) -> tuple[str, ...]:

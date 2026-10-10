@@ -1,6 +1,6 @@
 # Developing Expedite
 
-Expedite uses Python 3.11+, NiceGUI/pywebview, SQLModel/SQLite, Pillow, and PyInstaller.
+Expedite uses Python 3.15+, NiceGUI/pywebview, SQLModel/SQLite, Pillow, and PyInstaller.
 Application usage is documented in [README.md](README.md); coding conventions and the repository
 map are in [AGENTS.md](AGENTS.md).
 

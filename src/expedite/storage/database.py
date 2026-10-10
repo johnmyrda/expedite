@@ -1,6 +1,6 @@
 """SQLite engine, schema, session, and transaction management."""
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from importlib import import_module
 from pathlib import Path
@@ -64,7 +64,7 @@ def open_session() -> Session:
 
 
 @contextmanager
-def transaction() -> Iterator[Session]:
+def transaction() -> Generator[Session]:
     with open_session() as session:
         try:
             yield session
